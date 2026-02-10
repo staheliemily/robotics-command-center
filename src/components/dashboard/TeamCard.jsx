@@ -35,12 +35,6 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
     task => task.team === teamName && task.category === category
   );
 
-  // Debug logging - remove after fixing
-  console.log(`[TeamCard ${teamName}/${category}] All tasks:`, allTasks.length, 'Filtered:', teamTasks.length);
-  if (allTasks.length > 0 && teamTasks.length === 0) {
-    console.log('[TeamCard] Task team names in data:', [...new Set(allTasks.map(t => t.team))]);
-  }
-
   // Apply filters
   const filteredTasks = teamTasks.filter(task => {
     if (statusFilter !== 'all') {
@@ -88,23 +82,23 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
   return (
     <div className="rounded-lg border border-surface-700 bg-surface-800/50 overflow-hidden">
       {/* Card Header */}
-      <div className="flex items-center justify-between p-4 border-b border-surface-700">
-        <div className="flex items-center gap-3">
-          <div className={cn("w-3 h-3 rounded-full", colorDot[color])} />
-          <h3 className="font-semibold text-white truncate max-w-[150px]">{teamName}</h3>
+      <div className="flex items-center justify-between p-3 sm:p-4 border-b border-surface-700">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className={cn("w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full flex-shrink-0", colorDot[color])} />
+          <h3 className="font-semibold text-white text-sm sm:text-base truncate">{teamName}</h3>
         </div>
 
-        <div className="flex items-center gap-2">
-          {/* Stats */}
-          <div className="hidden sm:flex items-center gap-1 text-xs">
-            <span className="px-2 py-1 rounded bg-surface-700 text-surface-300">
-              {stats.todo} to do
+        <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
+          {/* Stats - Compact on mobile */}
+          <div className="flex items-center gap-1 text-xs">
+            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-surface-700 text-surface-300">
+              {stats.todo}
             </span>
-            <span className="px-2 py-1 rounded bg-blue-500/20 text-blue-400">
-              {stats.active} active
+            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-blue-500/20 text-blue-400">
+              {stats.active}
             </span>
-            <span className="px-2 py-1 rounded bg-green-500/20 text-green-400">
-              {stats.done} done
+            <span className="px-1.5 sm:px-2 py-0.5 sm:py-1 rounded bg-green-500/20 text-green-400">
+              {stats.done}
             </span>
           </div>
 
@@ -116,21 +110,21 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
               className="bg-green-600 hover:bg-green-700 text-white h-7 px-2 gap-1"
             >
               <Plus className="h-3.5 w-3.5" />
-              Add
+              <span className="hidden sm:inline">Add</span>
             </Button>
           )}
         </div>
       </div>
 
       {/* Filters */}
-      <div className="p-3 border-b border-surface-700 bg-surface-800/30">
-        <div className="flex items-center gap-2 text-sm flex-wrap">
+      <div className="p-2 sm:p-3 border-b border-surface-700 bg-surface-800/30">
+        <div className="flex items-center gap-1.5 sm:gap-2 text-sm">
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 w-[100px] bg-surface-700 border-surface-600 text-xs">
-              <SelectValue placeholder="All Status" />
+            <SelectTrigger className="h-7 sm:h-8 w-[85px] sm:w-[100px] bg-surface-700 border-surface-600 text-xs">
+              <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="all">All</SelectItem>
               <SelectItem value="todo">To Do</SelectItem>
               <SelectItem value="active">Active</SelectItem>
               <SelectItem value="done">Done</SelectItem>
@@ -139,11 +133,11 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
 
           {assignees.length > 0 && (
             <Select value={assigneeFilter} onValueChange={setAssigneeFilter}>
-              <SelectTrigger className="h-8 w-[110px] bg-surface-700 border-surface-600 text-xs">
+              <SelectTrigger className="h-7 sm:h-8 w-[85px] sm:w-[110px] bg-surface-700 border-surface-600 text-xs">
                 <SelectValue placeholder="Assignee" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Assignees</SelectItem>
+                <SelectItem value="all">All</SelectItem>
                 {assignees.map(a => (
                   <SelectItem key={a} value={a}>{a}</SelectItem>
                 ))}
@@ -172,20 +166,20 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
                 <div
                   key={task.id}
                   onClick={() => setSelectedTask(task)}
-                  className="flex items-center gap-3 px-4 py-3 border-b border-surface-700/50 hover:bg-surface-700/30 cursor-pointer transition-colors"
+                  className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 border-b border-surface-700/50 hover:bg-surface-700/30 cursor-pointer transition-colors"
                 >
                   {/* Checkbox */}
                   <button
                     onClick={(e) => handleToggleComplete(task, e)}
                     className={cn(
-                      "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0",
+                      "w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0",
                       task.status === 'Completed'
                         ? "bg-green-500 border-green-500"
                         : "border-surface-500 hover:border-surface-400"
                     )}
                   >
                     {task.status === 'Completed' && (
-                      <svg className="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                       </svg>
                     )}
@@ -195,27 +189,22 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className={cn(
-                        "text-sm truncate",
+                        "text-xs sm:text-sm truncate",
                         task.status === 'Completed' ? "text-surface-500 line-through" : "text-white"
                       )}>
                         {task.title}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-1 flex-wrap">
-                      {task.subsystem && (
-                        <span className="px-2 py-0.5 text-xs rounded bg-surface-600 text-surface-300">
-                          {task.subsystem}
-                        </span>
-                      )}
+                    <div className="flex items-center gap-1.5 sm:gap-2 mt-0.5 sm:mt-1 flex-wrap">
                       {task.assigned_to && (
-                        <span className="text-xs text-surface-400 flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          {task.assigned_to}
+                        <span className="text-xs text-surface-400 flex items-center gap-0.5 sm:gap-1">
+                          <User className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
+                          <span className="truncate max-w-[60px] sm:max-w-none">{task.assigned_to}</span>
                         </span>
                       )}
                       {task.due_date && (
-                        <span className="text-xs text-surface-400 flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
+                        <span className="text-xs text-surface-400 flex items-center gap-0.5 sm:gap-1">
+                          <Clock className="w-2.5 h-2.5 sm:w-3 sm:h-3" />
                           {new Date(task.due_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       )}
@@ -224,7 +213,7 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
 
                   {/* Priority Badge */}
                   <span className={cn(
-                    "px-2 py-1 text-xs rounded border flex-shrink-0",
+                    "px-1.5 sm:px-2 py-0.5 sm:py-1 text-[10px] sm:text-xs rounded border flex-shrink-0",
                     priorityBadgeVariants[task.priority]
                   )}>
                     {task.priority}

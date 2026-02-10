@@ -53,17 +53,21 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
 
   const handleSave = async () => {
     try {
+      // Extract only the fields we want to update (exclude id, created_at)
+      const { id, created_at, ...updateData } = formData;
+
       await updateTask.mutateAsync({
         id: task.id,
         data: {
-          ...formData,
-          start_date: formData.start_date?.toISOString(),
-          due_date: formData.due_date?.toISOString(),
+          ...updateData,
+          start_date: formData.start_date?.toISOString() || null,
+          due_date: formData.due_date?.toISOString() || null,
         },
       });
       setIsEditing(false);
     } catch (error) {
       console.error('Failed to update task:', error);
+      alert('Failed to save changes. Please try again.');
     }
   };
 
@@ -241,16 +245,17 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
               />
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setIsEditing(false)}
+                className="w-full sm:w-auto"
               >
                 <X className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={updateTask.isPending}>
+              <Button onClick={handleSave} disabled={updateTask.isPending} className="w-full sm:w-auto">
                 <Save className="mr-2 h-4 w-4" />
                 {updateTask.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -328,12 +333,12 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
               )}
             </div>
 
-            <DialogFooter>
-              <Button variant="outline" onClick={() => onOpenChange(false)}>
+            <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
+              <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
                 Close
               </Button>
               {isAdmin && (
-                <Button onClick={() => setIsEditing(true)}>
+                <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto">
                   <Edit2 className="mr-2 h-4 w-4" />
                   Edit Task
                 </Button>

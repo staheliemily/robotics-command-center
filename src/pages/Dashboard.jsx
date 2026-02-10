@@ -155,72 +155,72 @@ export function Dashboard() {
       {/* Header */}
       <header className="border-b border-surface-800 bg-surface-900">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
+          <div className="flex h-14 sm:h-16 items-center justify-between">
             {/* Logo & Title */}
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600">
-                <Bot className="h-6 w-6 text-white" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary-600">
+                <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-white">Robotics Command Center</h1>
-                <p className="text-xs text-surface-400">Team schedules, tasks & budget tracking</p>
+                <h1 className="text-sm sm:text-lg font-bold text-white">Robotics HQ</h1>
+                <p className="hidden sm:block text-xs text-surface-400">Team schedules, tasks & budget tracking</p>
               </div>
             </div>
 
             {/* Right side */}
-            <div className="flex items-center gap-2">
-              {/* Admin Toggle */}
+            <div className="flex items-center gap-1 sm:gap-2">
+              {/* Admin Toggle - Icon only on mobile */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={toggleAdminMode}
-                className="text-xs border-surface-700 hover:bg-surface-800"
+                className="text-xs border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
               >
-                <Settings className="h-3.5 w-3.5 mr-1" />
-                {isAdmin ? 'Admin' : 'Viewer'}
+                <Settings className="h-3.5 w-3.5 sm:mr-1" />
+                <span className="hidden sm:inline">{isAdmin ? 'Admin' : 'Viewer'}</span>
               </Button>
 
               {/* Theme Toggle */}
               <ThemeToggle />
 
-              {/* Refresh */}
+              {/* Refresh - Icon only on mobile */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={handleRefresh}
-                className="border-surface-700 hover:bg-surface-800"
+                className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
               >
-                <RefreshCw className="h-4 w-4 mr-1" />
-                Refresh
+                <RefreshCw className="h-4 w-4 sm:mr-1" />
+                <span className="hidden sm:inline">Refresh</span>
               </Button>
 
-              {/* Task Tracking Link */}
+              {/* Task Tracking Link - Icon only on mobile */}
               <Link to="/tasks">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-surface-700 hover:bg-surface-800"
+                  className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
                 >
-                  <ListTodo className="h-4 w-4 mr-1" />
-                  Tasks
+                  <ListTodo className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Tasks</span>
                 </Button>
               </Link>
 
-              {/* Reports Link */}
+              {/* Reports Link - Icon only on mobile */}
               <Link to="/reports">
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-surface-700 hover:bg-surface-800"
+                  className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
                 >
-                  <BarChart3 className="h-4 w-4 mr-1" />
-                  Reports
+                  <BarChart3 className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Reports</span>
                 </Button>
               </Link>
 
               {/* Logout */}
-              <Button variant="ghost" size="icon" onClick={handleLogout} className="text-surface-400 hover:text-white">
-                <LogOut className="h-5 w-5" />
+              <Button variant="ghost" size="icon" onClick={handleLogout} className="text-surface-400 hover:text-white h-8 w-8 sm:h-9 sm:w-9">
+                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
               </Button>
             </div>
           </div>

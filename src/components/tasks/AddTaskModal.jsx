@@ -323,15 +323,16 @@ export function AddTaskModal({ open, onOpenChange, defaultTeam, defaultCategory 
             />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-col-reverse sm:flex-row gap-2 sm:gap-0">
             <Button
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={createTask.isPending}>
+            <Button type="submit" disabled={createTask.isPending} className="w-full sm:w-auto">
               {createTask.isPending ? 'Creating...' : 'Create Task'}
             </Button>
           </DialogFooter>

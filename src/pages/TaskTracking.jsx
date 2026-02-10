@@ -61,28 +61,28 @@ export function TaskTracking() {
       {/* Header */}
       <header className="sticky top-0 z-40 border-b border-surface-200 bg-white/80 backdrop-blur-sm dark:border-surface-800 dark:bg-surface-900/80">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-4">
+          <div className="flex h-14 sm:h-16 items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link to="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
+                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600">
-                  <Bot className="h-6 w-6 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary-600">
+                  <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 </div>
                 <div>
-                  <h1 className="text-lg font-bold">Task Tracking</h1>
-                  <p className="text-xs text-surface-500">Monitor & Manage</p>
+                  <h1 className="text-sm sm:text-lg font-bold">Task Tracking</h1>
+                  <p className="hidden sm:block text-xs text-surface-500">Monitor & Manage</p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2">
               {isAdmin && (
-                <Button onClick={() => setShowAddModal(true)} className="gap-2">
+                <Button onClick={() => setShowAddModal(true)} className="gap-1 sm:gap-2 text-sm px-2 sm:px-4">
                   <Plus className="h-4 w-4" />
-                  Add Task
+                  <span className="hidden sm:inline">Add Task</span>
                 </Button>
               )}
               <ThemeToggle />
