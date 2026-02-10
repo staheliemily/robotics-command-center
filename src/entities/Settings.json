@@ -1,0 +1,17 @@
+{
+  "name": "Settings",
+  "fields": {
+    "key": {
+      "type": "string",
+      "required": true
+    },
+    "value": {
+      "type": "any",
+      "required": true
+    }
+  },
+  "defaults": {
+    "total_budget": 10000,
+    "banner_message": "Welcome to the Robotics Team Dashboard!"
+  }
+}

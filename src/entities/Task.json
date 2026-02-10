@@ -1,0 +1,60 @@
+{
+  "name": "Task",
+  "fields": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "string",
+      "required": false
+    },
+    "team": {
+      "type": "enum",
+      "values": ["Build Team", "Programming Team", "Outreach Team", "All Teams"],
+      "required": true
+    },
+    "category": {
+      "type": "enum",
+      "values": ["FTC", "FRC"],
+      "required": true
+    },
+    "department": {
+      "type": "enum",
+      "values": ["Mechanical", "Electrical", "Software", "Marketing", "Operations"],
+      "required": false
+    },
+    "subsystem": {
+      "type": "string",
+      "required": false
+    },
+    "assigned_to": {
+      "type": "string",
+      "required": false
+    },
+    "start_date": {
+      "type": "date",
+      "required": false
+    },
+    "due_date": {
+      "type": "date",
+      "required": false
+    },
+    "status": {
+      "type": "enum",
+      "values": ["Not Started", "In Progress", "Blocked", "Completed"],
+      "default": "Not Started",
+      "required": true
+    },
+    "priority": {
+      "type": "enum",
+      "values": ["Low", "Medium", "High", "Critical"],
+      "default": "Medium",
+      "required": true
+    },
+    "needs_mentor": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}

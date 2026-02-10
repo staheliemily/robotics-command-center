@@ -1,0 +1,31 @@
+{
+  "name": "Sponsor",
+  "fields": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "amount": {
+      "type": "number",
+      "required": true
+    },
+    "contact_email": {
+      "type": "string",
+      "required": false
+    },
+    "status": {
+      "type": "enum",
+      "values": ["Pending", "Confirmed", "Received"],
+      "default": "Pending",
+      "required": true
+    },
+    "date_received": {
+      "type": "date",
+      "required": false
+    },
+    "notes": {
+      "type": "string",
+      "required": false
+    }
+  }
+}

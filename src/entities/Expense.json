@@ -1,0 +1,31 @@
+{
+  "name": "Expense",
+  "fields": {
+    "description": {
+      "type": "string",
+      "required": true
+    },
+    "amount": {
+      "type": "number",
+      "required": true
+    },
+    "category": {
+      "type": "enum",
+      "values": ["Parts", "Tools", "Registration", "Travel", "Marketing", "Other"],
+      "required": true
+    },
+    "team": {
+      "type": "enum",
+      "values": ["Build Team", "Programming Team", "Outreach Team", "All Teams"],
+      "required": false
+    },
+    "date": {
+      "type": "date",
+      "required": true
+    },
+    "receipt_url": {
+      "type": "string",
+      "required": false
+    }
+  }
+}
