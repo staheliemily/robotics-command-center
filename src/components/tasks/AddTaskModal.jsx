@@ -22,6 +22,7 @@ import { Switch } from '../ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { useCreateTask } from '../../hooks/useTasks';
+import { MilestoneSelect } from '../milestones/MilestoneSelect';
 import { cn } from '../../lib/utils';
 
 // FTC Teams
@@ -43,6 +44,7 @@ const initialFormState = {
   department: '',
   subsystem: '',
   assigned_to: '',
+  milestone_id: '',
   start_date: null,
   due_date: null,
   status: 'Not Started',
@@ -212,6 +214,17 @@ export function AddTaskModal({ open, onOpenChange, defaultTeam, defaultCategory 
               value={formData.assigned_to}
               onChange={(e) => updateField('assigned_to', e.target.value)}
               placeholder="Enter team member name..."
+            />
+          </div>
+
+          {/* Milestone */}
+          <div className="space-y-2">
+            <Label>Milestone</Label>
+            <MilestoneSelect
+              value={formData.milestone_id}
+              onValueChange={(value) => updateField('milestone_id', value)}
+              category={formData.category}
+              placeholder="Select milestone (optional)"
             />
           </div>
 

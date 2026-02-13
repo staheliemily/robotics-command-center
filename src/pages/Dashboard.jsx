@@ -14,11 +14,14 @@ import {
   Wallet,
   Receipt,
   ListTodo,
+  Heart,
+  Users,
 } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import ThemeToggle from '../components/dashboard/ThemeToggle';
 import TeamCard from '../components/dashboard/TeamCard';
+import MentorTasksSection from '../components/dashboard/MentorTasksSection';
 import SponsorGrid from '../components/finance/SponsorGrid';
 import BudgetGrid from '../components/finance/BudgetGrid';
 import ExpenseList from '../components/finance/ExpenseList';
@@ -206,6 +209,30 @@ export function Dashboard() {
                 </Button>
               </Link>
 
+              {/* Wishlist Link - Icon only on mobile */}
+              <Link to="/wishlist">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
+                >
+                  <Heart className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Wishlist</span>
+                </Button>
+              </Link>
+
+              {/* Mentor Tasks Link - Icon only on mobile */}
+              <Link to="/mentor-tasks">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
+                >
+                  <Users className="h-4 w-4 sm:mr-1" />
+                  <span className="hidden sm:inline">Mentors</span>
+                </Button>
+              </Link>
+
               {/* Reports Link - Icon only on mobile */}
               <Link to="/reports">
                 <Button
@@ -289,6 +316,17 @@ export function Dashboard() {
                 <ExpenseList />
               </div>
             </div>
+          </div>
+
+          {/* Mentor Tasks Section */}
+          <div className="mb-10">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 rounded-lg bg-violet-600">
+                <Users className="h-5 w-5 text-white" />
+              </div>
+              <h2 className="text-xl font-bold text-white">Mentor Tasks</h2>
+            </div>
+            <MentorTasksSection />
           </div>
         </div>
       </main>

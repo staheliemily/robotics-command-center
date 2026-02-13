@@ -7,6 +7,8 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Reports from './pages/Reports';
 import TaskTracking from './pages/TaskTracking';
+import Wishlist from './pages/Wishlist';
+import MentorTasks from './pages/MentorTasks';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -88,6 +90,22 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <TaskTracking />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/wishlist"
+        element={
+          <ProtectedRoute>
+            <Wishlist />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/mentor-tasks"
+        element={
+          <ProtectedRoute>
+            <MentorTasks />
           </ProtectedRoute>
         }
       />

@@ -23,6 +23,8 @@ import { Badge } from '../ui/badge';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { useUpdateTask, useDeleteTask } from '../../hooks/useTasks';
+import { useMilestone } from '../../hooks/useMilestones';
+import { MilestoneSelect } from '../milestones/MilestoneSelect';
 import { useAuth } from '../../context/AuthContext';
 import { formatDate, cn } from '../../lib/utils';
 
@@ -38,6 +40,7 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
   const [formData, setFormData] = useState({});
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
+  const { data: milestone } = useMilestone(task?.milestone_id);
 
   useEffect(() => {
     if (task) {
@@ -236,6 +239,17 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
               />
             </div>
 
+            {/* Milestone */}
+            <div className="space-y-2">
+              <Label>Milestone</Label>
+              <MilestoneSelect
+                value={formData.milestone_id || ''}
+                onValueChange={(value) => updateField('milestone_id', value)}
+                category={formData.category}
+                placeholder="Select milestone (optional)"
+              />
+            </div>
+
             {/* Needs Mentor */}
             <div className="flex items-center justify-between rounded-lg border border-surface-200 p-4 dark:border-surface-700">
               <Label>Needs Mentor Help</Label>
@@ -255,7 +269,7 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
                 <X className="mr-2 h-4 w-4" />
                 Cancel
               </Button>
-              <Button onClick={handleSave} disabled={updateTask.isPending} className="w-full sm:w-auto">
+              <Button type="button" onClick={handleSave} disabled={updateTask.isPending} className="w-full sm:w-auto">
                 <Save className="mr-2 h-4 w-4" />
                 {updateTask.isPending ? 'Saving...' : 'Save Changes'}
               </Button>
@@ -329,6 +343,18 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
                 <div>
                   <span className="text-sm text-surface-500">Due Date</span>
                   <p className="font-medium">{formatDate(task.due_date)}</p>
+                </div>
+              )}
+              {milestone && (
+                <div>
+                  <span className="text-sm text-surface-500">Milestone</span>
+                  <p className="flex items-center gap-2 font-medium">
+                    <span
+                      className="h-3 w-3 rounded-full"
+                      style={{ backgroundColor: milestone.color || '#6366f1' }}
+                    />
+                    {milestone.name}
+                  </p>
                 </div>
               )}
             </div>

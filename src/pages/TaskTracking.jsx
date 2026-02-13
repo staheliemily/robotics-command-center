@@ -8,6 +8,9 @@ import {
   Clock,
   CheckCircle,
   XCircle,
+  List,
+  BarChart3,
+  Flag,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -17,6 +20,8 @@ import TaskFilters from '../components/tasks/TaskFilters';
 import TaskCard from '../components/tasks/TaskCard';
 import AddTaskModal from '../components/tasks/AddTaskModal';
 import TaskDetailModal from '../components/tasks/TaskDetailModal';
+import GanttChart from '../components/gantt/GanttChart';
+import AddMilestoneModal from '../components/milestones/AddMilestoneModal';
 import { useTasks, useTaskStats } from '../hooks/useTasks';
 import { useAuth } from '../context/AuthContext';
 import { cn } from '../lib/utils';
@@ -28,7 +33,11 @@ export function TaskTracking() {
 
   const [filters, setFilters] = useState({});
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
+  const [selectedMilestone, setSelectedMilestone] = useState(null);
+  const [viewMode, setViewMode] = useState('list');
+  const [addTaskMilestone, setAddTaskMilestone] = useState(null);
 
   // Apply filters
   const filteredTasks = allTasks.filter(task => {
@@ -56,6 +65,135 @@ export function TaskTracking() {
   // Get tasks needing mentor
   const mentorTasks = allTasks.filter(t => t.needs_mentor);
 
+  // Handle add task from Gantt
+  const handleAddTaskFromGantt = (milestone) => {
+    setAddTaskMilestone(milestone);
+    setShowAddModal(true);
+  };
+
+  // Gantt full-screen view
+  if (viewMode === 'gantt') {
+    return (
+      <div className="flex h-screen flex-col bg-surface-950">
+        {/* Compact Header for Gantt View */}
+        <header className="flex-shrink-0 border-b border-surface-800 bg-surface-900">
+          <div className="flex h-12 items-center justify-between px-4">
+            <div className="flex items-center gap-3">
+              <Link to="/">
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-surface-400 hover:text-surface-200">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
+              <div className="flex items-center gap-2">
+                <div className="flex h-7 w-7 items-center justify-center rounded bg-primary-600">
+                  <Bot className="h-4 w-4 text-white" />
+                </div>
+                <h1 className="text-sm font-semibold text-surface-200">Task Tracking</h1>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* View Toggle */}
+              <div className="flex rounded border border-surface-700">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors",
+                    viewMode === 'list'
+                      ? "bg-primary-600 text-white"
+                      : "text-surface-400 hover:bg-surface-800 hover:text-surface-200"
+                  )}
+                >
+                  <List className="h-3.5 w-3.5" />
+                  <span>List</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('gantt')}
+                  className={cn(
+                    "flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors",
+                    viewMode === 'gantt'
+                      ? "bg-primary-600 text-white"
+                      : "text-surface-400 hover:bg-surface-800 hover:text-surface-200"
+                  )}
+                >
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  <span>Gantt</span>
+                </button>
+              </div>
+
+              {isAdmin && (
+                <>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowMilestoneModal(true)}
+                    className="h-8 gap-1 text-xs text-surface-400 hover:text-surface-200"
+                  >
+                    <Flag className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Milestone</span>
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setShowAddModal(true)}
+                    className="h-8 gap-1 text-xs"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Task</span>
+                  </Button>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Full-screen Gantt Chart */}
+        <div className="flex-1 overflow-hidden">
+          {isLoading ? (
+            <div className="flex h-full items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary-600 border-t-transparent" />
+            </div>
+          ) : (
+            <GanttChart
+              tasks={filteredTasks}
+              categoryFilter={filters.category}
+              onTaskClick={setSelectedTask}
+              onMilestoneClick={(milestone) => {
+                setSelectedMilestone(milestone);
+                setShowMilestoneModal(true);
+              }}
+              onAddTask={handleAddTaskFromGantt}
+            />
+          )}
+        </div>
+
+        {/* Modals */}
+        <AddTaskModal
+          open={showAddModal}
+          onOpenChange={(open) => {
+            setShowAddModal(open);
+            if (!open) setAddTaskMilestone(null);
+          }}
+          defaultMilestone={addTaskMilestone}
+        />
+        <TaskDetailModal
+          task={selectedTask}
+          open={!!selectedTask}
+          onOpenChange={(open) => !open && setSelectedTask(null)}
+        />
+        <AddMilestoneModal
+          open={showMilestoneModal}
+          onOpenChange={(open) => {
+            setShowMilestoneModal(open);
+            if (!open) setSelectedMilestone(null);
+          }}
+          milestone={selectedMilestone}
+          defaultCategory={filters.category}
+        />
+      </div>
+    );
+  }
+
+  // List view (original layout)
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
       {/* Header */}
@@ -79,11 +217,49 @@ export function TaskTracking() {
               </div>
             </div>
             <div className="flex items-center gap-1 sm:gap-2">
+              {/* View Toggle */}
+              <div className="flex rounded-lg border border-surface-200 dark:border-surface-700">
+                <button
+                  onClick={() => setViewMode('list')}
+                  className={cn(
+                    "flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm font-medium transition-colors rounded-l-lg",
+                    viewMode === 'list'
+                      ? "bg-primary-600 text-white"
+                      : "text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+                  )}
+                >
+                  <List className="h-4 w-4" />
+                  <span className="hidden sm:inline">List</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('gantt')}
+                  className={cn(
+                    "flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm font-medium transition-colors rounded-r-lg",
+                    viewMode === 'gantt'
+                      ? "bg-primary-600 text-white"
+                      : "text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+                  )}
+                >
+                  <BarChart3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Gantt</span>
+                </button>
+              </div>
+
               {isAdmin && (
-                <Button onClick={() => setShowAddModal(true)} className="gap-1 sm:gap-2 text-sm px-2 sm:px-4">
-                  <Plus className="h-4 w-4" />
-                  <span className="hidden sm:inline">Add Task</span>
-                </Button>
+                <>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowMilestoneModal(true)}
+                    className="gap-1 sm:gap-2 text-sm px-2 sm:px-4"
+                  >
+                    <Flag className="h-4 w-4" />
+                    <span className="hidden lg:inline">Milestone</span>
+                  </Button>
+                  <Button onClick={() => setShowAddModal(true)} className="gap-1 sm:gap-2 text-sm px-2 sm:px-4">
+                    <Plus className="h-4 w-4" />
+                    <span className="hidden sm:inline">Add Task</span>
+                  </Button>
+                </>
               )}
               <ThemeToggle />
             </div>
@@ -274,6 +450,15 @@ export function TaskTracking() {
         task={selectedTask}
         open={!!selectedTask}
         onOpenChange={(open) => !open && setSelectedTask(null)}
+      />
+      <AddMilestoneModal
+        open={showMilestoneModal}
+        onOpenChange={(open) => {
+          setShowMilestoneModal(open);
+          if (!open) setSelectedMilestone(null);
+        }}
+        milestone={selectedMilestone}
+        defaultCategory={filters.category}
       />
     </div>
   );
