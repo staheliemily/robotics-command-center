@@ -11,6 +11,7 @@ Any group can sign up and run itself. Nothing about a particular club is built i
 - **Organizations.** Someone signs up, creates an organization, and becomes its admin. Each organization has its own teams, tasks, milestones, mentor tasks, wishlist, sponsors, expenses and settings, stored under `orgs/{orgId}/...`. One organization cannot see or change another's.
 - **Teams.** The admin adds teams on the People page (`/users`) and marks each as FTC or FRC.
 - **Joining.** The admin copies an invite link from the People page. Whoever opens it signs up (or signs in) and shows up in the admin's list as pending, with the offered role and team filled in. They see nothing until the admin approves them.
+- **One account, several organizations.** The same login can belong to any number of organizations, with a different role in each: an admin of one can be a mentor in two others. Each membership is a record under that organization (`orgs/{orgId}/members/{uid}`), approved by that organization's own admin. The account menu switches between them, and "Add another organization" starts a new one. Opening an invite link while signed in adds that organization to the account.
 - **Roles.** Admin, Mentor, and Student (stored as `member`). A student is on one team; a mentor can be on several and picks which one to view on the dashboard.
 
 | Data | Student | Mentor | Admin |
@@ -19,9 +20,9 @@ Any group can sign up and run itself. Nothing about a particular club is built i
 | Milestones | read | full | full |
 | Mentor tasks, wishlist | full | full | full |
 | Sponsors, expenses, settings | read | read | full |
-| People and teams | own profile only | own profile only | everyone in the organization |
+| People and teams | own record only | own record only | everyone in the organization |
 
-An account belongs to one organization at a time.
+A role counts only inside the organization that granted it. `users/{uid}` is just a private profile listing which organizations the account looks in; it grants nothing.
 
 ## Run locally
 
@@ -73,4 +74,5 @@ The rules and the site have to go out together: the site expects these rules, an
 
 - DNS for hawksop.com is managed at GoDaddy: an `A` record for `@` pointing at Firebase Hosting, plus the `TXT` record Firebase asks for when the domain is connected (Firebase Console > Hosting > Add custom domain).
 - `hawksop.com` is listed under Firebase Console > Authentication > Settings > Authorized domains, and is the auth domain in `.env.production.local`. Google sign-in fails without both.
+- Sign-in emails are sent from `noreply@hawksop.com`. That needs the two `TXT` and two `CNAME` records Firebase lists under Authentication > Templates > Customize domain; they are in place at GoDaddy.
 - Firebase's built-in addresses (`maupcoop.web.app`, `maupcoop.firebaseapp.com`) stay on; `src/index.js` redirects them to hawksop.com.

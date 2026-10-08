@@ -2,84 +2,43 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function memberDoc() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    function signedIn() { return request.auth != null; }
+    function verified() { return signedIn() && request.auth.token.email_verified == true; }
+
+    // One account can belong to several organizations. Its role, team and
+    // approval in each one live in that organization's own members list, so
+    // nothing an account holds in one organization counts in another.
+    function memberPath(orgId) {
+      return /databases/$(database)/documents/orgs/$(orgId)/members/$(request.auth.uid);
     }
-    function isActive() {
-      return request.auth != null
-        && request.auth.token.email_verified == true
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && memberDoc().status == 'active';
-    }
-    function role()   { return memberDoc().role; }
-    function myTeam() { return memberDoc().team; }
-    function myOrg()  { return memberDoc().get('org_id', null); }
+    function membership(orgId) { return get(memberPath(orgId)).data; }
+    function role(orgId)   { return membership(orgId).role; }
+    function myTeam(orgId) { return membership(orgId).team; }
 
     // An approved member of this particular organization. Every rule for an
     // organization's data goes through this, which is what keeps one group
     // from reading or writing another's.
     function inOrg(orgId) {
-      return isActive() && myOrg() != null && myOrg() == orgId;
+      return verified()
+        && exists(memberPath(orgId))
+        && membership(orgId).status == 'active';
     }
     function isOrgAdmin(orgId) {
-      return inOrg(orgId) && role() == 'admin';
+      return inOrg(orgId) && role(orgId) == 'admin';
     }
 
+    // An account's own profile: its name and the list of organizations it
+    // looks in. It grants nothing; access comes only from members records.
     match /users/{uid} {
-      // A signed-in user may create only their own pending record, and may not
-      // grant themselves a team or a role in the process. They may name the
-      // organization they want to join; that gives them nothing until one of
-      // its admins approves.
-      allow create: if request.auth != null
-        && request.auth.uid == uid
-        && request.resource.data.status == 'pending'
-        && request.resource.data.role == null
-        && request.resource.data.team == null;
-
-      // Yourself, or anyone attached to the organization you administer. The
-      // second form is also what lets an admin list their own people.
-      allow read: if request.auth != null && (
-        request.auth.uid == uid
-        || (resource.data.get('org_id', null) != null && isOrgAdmin(resource.data.org_id))
-      );
-
-      allow update: if request.auth != null && (
-        // An admin manages people in their own organization and cannot move
-        // them to another one.
-        (resource.data.get('org_id', null) != null
-          && isOrgAdmin(resource.data.org_id)
-          && request.resource.data.org_id == resource.data.org_id)
-
-        // Someone who is not an approved member anywhere may ask to join an
-        // organization, or withdraw the request. They stay pending with no role.
-        || (request.auth.uid == uid
-          && (resource.data.status == 'pending' || resource.data.get('org_id', null) == null)
-          && request.resource.data.status == 'pending'
-          && request.resource.data.role == null
-          && request.resource.data.team == null)
-
-        // Someone with no organization becomes the admin of one they created.
-        // This is the only way to gain a role without an admin's approval.
-        || (request.auth.uid == uid
-          && request.auth.token.email_verified == true
-          && resource.data.get('org_id', null) == null
-          && request.resource.data.org_id is string
-          && get(/databases/$(database)/documents/orgs/$(request.resource.data.org_id)).data.created_by == uid
-          && request.resource.data.role == 'admin'
-          && request.resource.data.status == 'active')
-      );
-
-      allow delete: if resource.data.get('org_id', null) != null
-        && isOrgAdmin(resource.data.org_id);
+      allow read, create, update: if signedIn() && request.auth.uid == uid;
     }
 
     match /orgs/{orgId} {
       // Reading one organization by its id shows only its name and team list;
       // an invite link needs that. Listing organizations is never allowed.
-      allow get: if request.auth != null;
+      allow get: if signedIn();
 
-      allow create: if request.auth != null
-        && request.auth.token.email_verified == true
+      allow create: if verified()
         && request.resource.data.created_by == request.auth.uid
         && request.resource.data.name is string
         && request.resource.data.name.size() > 0
@@ -89,31 +48,72 @@ service cloud.firestore {
       allow update: if isOrgAdmin(orgId)
         && request.resource.data.created_by == resource.data.created_by;
 
+      match /members/{uid} {
+        // Yourself, or anyone in the organization you administer
+        allow read: if signedIn() && (request.auth.uid == uid || isOrgAdmin(orgId));
+
+        allow create: if signedIn() && request.auth.uid == uid
+          && request.resource.data.email == request.auth.token.email
+          && (
+            // Anyone may ask to join. The request carries no role and no team
+            // and gives them nothing until one of the admins approves it.
+            (exists(/databases/$(database)/documents/orgs/$(orgId))
+              && request.resource.data.status == 'pending'
+              && request.resource.data.role == null
+              && request.resource.data.team == null)
+
+            // Whoever created the organization is its admin. This is the only
+            // way to gain a role without an admin's approval.
+            || (verified()
+              && get(/databases/$(database)/documents/orgs/$(orgId)).data.created_by == uid
+              && request.resource.data.role == 'admin'
+              && request.resource.data.status == 'active')
+          );
+
+        allow update: if isOrgAdmin(orgId)
+          // A request that has not been answered can be edited by its owner,
+          // as long as it stays a request. A suspended member keeps their old
+          // role on record, so this does not apply to them.
+          || (signedIn() && request.auth.uid == uid
+            && resource.data.status == 'pending'
+            && resource.data.role == null
+            && request.resource.data.status == 'pending'
+            && request.resource.data.role == null
+            && request.resource.data.team == null
+            && request.resource.data.email == request.auth.token.email);
+
+        // An admin removes people; someone can withdraw their own unanswered request.
+        allow delete: if isOrgAdmin(orgId)
+          || (signedIn() && request.auth.uid == uid
+            && resource.data.status == 'pending'
+            && resource.data.role == null);
+      }
+
       match /tasks/{id} {
         allow read: if inOrg(orgId);
         allow create: if inOrg(orgId) && (
-          role() in ['admin', 'mentor']
-          || (role() == 'member' && request.resource.data.team == myTeam())
+          role(orgId) in ['admin', 'mentor']
+          || (role(orgId) == 'member' && request.resource.data.team == myTeam(orgId))
         );
         // An update checks BOTH sides. Checking only request.resource.data.team
         // lets a member pull another team's task into their own team and then
         // edit it freely — a one-request theft that reads as authorised.
         allow update: if inOrg(orgId) && (
-          role() in ['admin', 'mentor']
-          || (role() == 'member'
-              && resource.data.team == myTeam()
-              && request.resource.data.team == myTeam())
+          role(orgId) in ['admin', 'mentor']
+          || (role(orgId) == 'member'
+              && resource.data.team == myTeam(orgId)
+              && request.resource.data.team == myTeam(orgId))
         );
         // resource, not request.resource: the latter is null on a delete.
         allow delete: if inOrg(orgId) && (
-          role() in ['admin', 'mentor']
-          || (role() == 'member' && resource.data.team == myTeam())
+          role(orgId) in ['admin', 'mentor']
+          || (role(orgId) == 'member' && resource.data.team == myTeam(orgId))
         );
       }
 
       match /milestones/{id} {
         allow read: if inOrg(orgId);
-        allow write: if inOrg(orgId) && role() in ['admin', 'mentor'];
+        allow write: if inOrg(orgId) && role(orgId) in ['admin', 'mentor'];
       }
 
       match /expenses/{id} {
@@ -134,11 +134,11 @@ service cloud.firestore {
       // default is deny, so a collection with no match block is invisible.
       match /mentor_tasks/{id} {
         allow read: if inOrg(orgId);
-        allow write: if inOrg(orgId) && role() in ['admin', 'mentor', 'member'];
+        allow write: if inOrg(orgId) && role(orgId) in ['admin', 'mentor', 'member'];
       }
       match /wishlist/{id} {
         allow read: if inOrg(orgId);
-        allow write: if inOrg(orgId) && role() in ['admin', 'mentor', 'member'];
+        allow write: if inOrg(orgId) && role(orgId) in ['admin', 'mentor', 'member'];
       }
     }
   }

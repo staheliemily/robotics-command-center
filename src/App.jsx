@@ -26,7 +26,7 @@ const queryClient = new QueryClient({
 
 // Protected Route component
 function ProtectedRoute({ children, adminOnly = false }) {
-  const { isAuthenticated, isActive, isAdmin, needsOrganization, loading } = useAuth();
+  const { isAuthenticated, isActive, isAdmin, needsOrganization, invite, user, loading } = useAuth();
 
   if (loading) {
     return (
@@ -40,8 +40,9 @@ function ProtectedRoute({ children, adminOnly = false }) {
     return <Navigate to="/login" replace />;
   }
 
-  // Verified, but not part of any organization yet: start one or join one
-  if (needsOrganization) {
+  // Verified, and either not part of any organization yet or holding an
+  // invite link they have not answered: start one or join one
+  if (needsOrganization || (invite && user?.emailVerified)) {
     return <Onboarding />;
   }
 
@@ -54,6 +55,17 @@ function ProtectedRoute({ children, adminOnly = false }) {
     return <Navigate to="/" replace />;
   }
 
+  return children;
+}
+
+// For signed-in, verified people whether or not an organization has approved
+// them yet. Used for adding another organization to an account.
+function AccountRoute({ children }) {
+  const { isAuthenticated, user, loading } = useAuth();
+
+  if (loading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (!user?.emailVerified) return <AccessPending />;
   return children;
 }
 
@@ -128,6 +140,14 @@ function AppRoutes() {
         }
       />
       <Route path="/join" element={<Join />} />
+      <Route
+        path="/organizations/new"
+        element={
+          <AccountRoute>
+            <Onboarding />
+          </AccountRoute>
+        }
+      />
       <Route
         path="/users"
         element={

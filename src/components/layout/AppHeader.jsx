@@ -3,6 +3,9 @@ import { Link, NavLink, useNavigate } from 'react-router-dom';
 import {
   Bot,
   BarChart3,
+  Building2,
+  Check,
+  Plus,
   LogOut,
   Settings,
   ListTodo,
@@ -38,12 +41,17 @@ const NAV_LINKS = [
 // The one top bar every signed-in page uses, so it looks the same everywhere
 export function AppHeader() {
   const navigate = useNavigate();
-  const { user, logout, isAdmin, isDemo, org, role, setRole } = useAuth();
+  const { user, logout, isAdmin, isDemo, org, organizations, switchOrganization, role, setRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
 
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const showOrganization = (orgId) => {
+    switchOrganization(orgId);
+    navigate('/');
   };
 
   const toggleAdminMode = () => {
@@ -101,6 +109,19 @@ export function AppHeader() {
                   {user?.email} · {ROLE_LABELS[role] || 'Viewer'}
                 </p>
               </DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              {/* One account can be in several organizations; pick which one is on screen */}
+              {organizations.length > 1 && organizations.map((o) => (
+                <DropdownMenuItem key={o.id} onSelect={() => showOrganization(o.id)}>
+                  {o.id === org?.id ? <Check className="mr-2 h-4 w-4" /> : <Building2 className="mr-2 h-4 w-4" />}
+                  <span className="truncate">{o.name}</span>
+                  {o.status !== 'active' && <span className="ml-auto pl-2 text-xs text-surface-500">waiting</span>}
+                </DropdownMenuItem>
+              ))}
+              <DropdownMenuItem onSelect={() => navigate('/organizations/new')}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add another organization
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               {isAdmin && (
                 <DropdownMenuItem onSelect={() => navigate('/users')}>
