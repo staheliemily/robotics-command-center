@@ -73,23 +73,23 @@ export function TaskTracking() {
   // Gantt full-screen view
   if (viewMode === 'gantt') {
     return (
-      <div className="flex h-screen flex-col bg-surface-950">
+      <div className="flex h-screen flex-col bg-surface-50 dark:bg-surface-950">
         <AppHeader />
         {/* Compact toolbar for Gantt View */}
-        <div className="flex-shrink-0 border-b border-surface-800 bg-surface-900">
+        <div className="flex-shrink-0 border-b border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900">
           <div className="flex h-12 items-center justify-between px-4">
-            <h1 className="text-sm font-semibold text-surface-200">Task Tracking</h1>
+            <h1 className="text-sm font-semibold text-surface-900 dark:text-surface-200">Task Tracking</h1>
 
             <div className="flex items-center gap-2">
               {/* View Toggle */}
-              <div className="flex rounded border border-surface-700">
+              <div className="flex rounded border border-surface-300 dark:border-surface-700">
                 <button
                   onClick={() => setViewMode('list')}
                   className={cn(
                     "flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors",
                     viewMode === 'list'
                       ? "bg-primary-600 text-white"
-                      : "text-surface-400 hover:bg-surface-800 hover:text-surface-200"
+                      : "text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 hover:text-surface-900 dark:hover:text-surface-200"
                   )}
                 >
                   <List className="h-3.5 w-3.5" />
@@ -101,7 +101,7 @@ export function TaskTracking() {
                     "flex items-center gap-1 px-2 py-1 text-xs font-medium transition-colors",
                     viewMode === 'gantt'
                       ? "bg-primary-600 text-white"
-                      : "text-surface-400 hover:bg-surface-800 hover:text-surface-200"
+                      : "text-surface-500 dark:text-surface-400 hover:bg-surface-100 dark:hover:bg-surface-800 hover:text-surface-900 dark:hover:text-surface-200"
                   )}
                 >
                   <BarChart3 className="h-3.5 w-3.5" />
@@ -116,7 +116,7 @@ export function TaskTracking() {
                       variant="ghost"
                       size="sm"
                       onClick={() => setShowMilestoneModal(true)}
-                      className="h-8 gap-1 text-xs text-surface-400 hover:text-surface-200"
+                      className="h-8 gap-1 text-xs text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200"
                     >
                       <Flag className="h-3.5 w-3.5" />
                       <span className="hidden sm:inline">Milestone</span>

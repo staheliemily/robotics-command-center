@@ -54,8 +54,8 @@ function AnnouncementBanner() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 mb-8">
-      <div className="flex items-center gap-3 rounded-lg bg-surface-800 border border-surface-700 px-4 py-3">
-        <Clock className="h-5 w-5 text-surface-400 flex-shrink-0" />
+      <div className="flex items-center gap-3 rounded-lg bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 px-4 py-3">
+        <Clock className="h-5 w-5 text-surface-500 dark:text-surface-400 flex-shrink-0" />
 
         {isEditing ? (
           <div className="flex flex-1 items-center gap-2">
@@ -63,7 +63,7 @@ function AnnouncementBanner() {
               value={editValue}
               onChange={(e) => setEditValue(e.target.value)}
               placeholder="Enter announcement..."
-              className="flex-1 bg-surface-700 border-surface-600"
+              className="flex-1 bg-surface-100 dark:bg-surface-700 border-surface-300 dark:border-surface-600"
               autoFocus
             />
             <Button size="icon" variant="ghost" onClick={handleSave} className="h-8 w-8 text-green-500 hover:text-green-400">
@@ -75,11 +75,11 @@ function AnnouncementBanner() {
           </div>
         ) : (
           <>
-            <span className="flex-1 text-surface-200">
+            <span className="flex-1 text-surface-800 dark:text-surface-200">
               {message || 'Click edit to add an announcement'}
             </span>
             {isAdmin && (
-              <Button size="icon" variant="ghost" onClick={handleEdit} className="h-8 w-8 text-surface-400 hover:text-white">
+              <Button size="icon" variant="ghost" onClick={handleEdit} className="h-8 w-8 text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white">
                 <Edit2 className="h-4 w-4" />
               </Button>
             )}
@@ -98,7 +98,7 @@ function CategorySection({ title, icon: Icon, teams, category, iconColor }) {
         <div className={cn("p-2 rounded-lg", iconColor)}>
           <Icon className="h-5 w-5 text-white" />
         </div>
-        <h2 className="text-xl font-bold text-white">{title}</h2>
+        <h2 className="text-xl font-bold text-surface-900 dark:text-white">{title}</h2>
       </div>
 
       {/* Team Cards Grid */}
@@ -150,8 +150,8 @@ function GettingStarted({ hasTeams }) {
 
   return (
     <div className="mb-8 rounded-lg border border-primary-500/30 bg-primary-500/5 p-4 sm:p-6">
-      <h2 className="text-lg font-bold text-white">Let's get you set up</h2>
-      <p className="mt-1 text-sm text-surface-400">Three steps and your group is ready to go.</p>
+      <h2 className="text-lg font-bold text-surface-900 dark:text-white">Let's get you set up</h2>
+      <p className="mt-1 text-sm text-surface-500 dark:text-surface-400">Three steps and your group is ready to go.</p>
 
       <ol className="mt-4 space-y-3">
         {steps.map((step) => (
@@ -164,14 +164,14 @@ function GettingStarted({ hasTeams }) {
             {/* Button sits beside the text on wide screens and under it on phones */}
             <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <div className="min-w-0">
-                <p className={cn('font-medium', step.done ? 'text-surface-500 line-through' : 'text-surface-100')}>
+                <p className={cn('font-medium', step.done ? 'text-surface-500 line-through' : 'text-surface-900 dark:text-surface-100')}>
                   {step.title}
                 </p>
-                {!step.done && <p className="text-sm text-surface-400">{step.detail}</p>}
+                {!step.done && <p className="text-sm text-surface-500 dark:text-surface-400">{step.detail}</p>}
               </div>
               {!step.done && step.to && (
                 <Link to={step.to} className="flex-shrink-0">
-                  <Button size="sm" variant={step === nextStep ? 'default' : 'outline'} className={step === nextStep ? '' : 'border-surface-700'}>
+                  <Button size="sm" variant={step === nextStep ? 'default' : 'outline'} className={step === nextStep ? '' : 'border-surface-200 dark:border-surface-700'}>
                     {step.action}
                   </Button>
                 </Link>
@@ -197,7 +197,7 @@ export function Dashboard() {
   const frcTeams = teamsIn('FRC').filter(showTeam);
 
   return (
-    <div className="min-h-screen bg-surface-900">
+    <div className="min-h-screen bg-surface-50 dark:bg-surface-900">
       <AppHeader />
 
       {/* Main Content */}
@@ -210,19 +210,19 @@ export function Dashboard() {
 
           {teams.length === 0 ? (
             !isAdmin && (
-              <div className="mb-10 rounded-lg border border-dashed border-surface-700 p-8 text-center text-surface-400">
-                <p className="font-medium text-surface-200">Welcome to {org?.name}</p>
+              <div className="mb-10 rounded-lg border border-dashed border-surface-200 dark:border-surface-700 p-8 text-center text-surface-500 dark:text-surface-400">
+                <p className="font-medium text-surface-800 dark:text-surface-200">Welcome to {org?.name}</p>
                 <p className="mt-1 text-sm">Your admin hasn't added any teams yet. Tasks will show up here once they do.</p>
               </div>
             )
           ) : (
             <div className="mb-6 flex items-center gap-2">
-              <label htmlFor="view-team" className="text-sm text-surface-400">Viewing</label>
+              <label htmlFor="view-team" className="text-sm text-surface-500 dark:text-surface-400">Viewing</label>
               <select
                 id="view-team"
                 value={viewTeam || ''}
                 onChange={(e) => setViewTeam(e.target.value || null)}
-                className="rounded-md border border-surface-700 bg-surface-800 px-3 py-1.5 text-sm text-surface-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+                className="rounded-md border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 px-3 py-1.5 text-sm text-surface-900 dark:text-surface-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
               >
                 <option value="">All teams</option>
                 {teamChoices.map((t) => (
@@ -260,14 +260,14 @@ export function Dashboard() {
               <div className="p-2 rounded-lg bg-green-600">
                 <DollarSign className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-white">Business & Finance</h2>
+              <h2 className="text-xl font-bold text-surface-900 dark:text-white">Business & Finance</h2>
             </div>
 
             {/* Budget Overview */}
-            <div className="rounded-lg border border-surface-700 bg-surface-800/50 mb-4">
-              <div className="flex items-center gap-2 p-4 border-b border-surface-700">
-                <Wallet className="h-5 w-5 text-surface-400" />
-                <h3 className="font-semibold text-white">Budget Overview</h3>
+            <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/50 mb-4">
+              <div className="flex items-center gap-2 p-4 border-b border-surface-200 dark:border-surface-700">
+                <Wallet className="h-5 w-5 text-surface-500 dark:text-surface-400" />
+                <h3 className="font-semibold text-surface-900 dark:text-white">Budget Overview</h3>
               </div>
               <BudgetGrid />
             </div>
@@ -275,19 +275,19 @@ export function Dashboard() {
             {/* Sponsors and Expenses Grid */}
             <div className="grid gap-4 lg:grid-cols-2">
               {/* Sponsors */}
-              <div className="rounded-lg border border-surface-700 bg-surface-800/50">
-                <div className="flex items-center gap-2 p-4 border-b border-surface-700">
-                  <DollarSign className="h-5 w-5 text-surface-400" />
-                  <h3 className="font-semibold text-white">Sponsors</h3>
+              <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/50">
+                <div className="flex items-center gap-2 p-4 border-b border-surface-200 dark:border-surface-700">
+                  <DollarSign className="h-5 w-5 text-surface-500 dark:text-surface-400" />
+                  <h3 className="font-semibold text-surface-900 dark:text-white">Sponsors</h3>
                 </div>
                 <SponsorGrid />
               </div>
 
               {/* Expenses */}
-              <div className="rounded-lg border border-surface-700 bg-surface-800/50">
-                <div className="flex items-center gap-2 p-4 border-b border-surface-700">
-                  <Receipt className="h-5 w-5 text-surface-400" />
-                  <h3 className="font-semibold text-white">Expenses</h3>
+              <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/50">
+                <div className="flex items-center gap-2 p-4 border-b border-surface-200 dark:border-surface-700">
+                  <Receipt className="h-5 w-5 text-surface-500 dark:text-surface-400" />
+                  <h3 className="font-semibold text-surface-900 dark:text-white">Expenses</h3>
                 </div>
                 <ExpenseList />
               </div>
@@ -300,7 +300,7 @@ export function Dashboard() {
               <div className="p-2 rounded-lg bg-violet-600">
                 <Users className="h-5 w-5 text-white" />
               </div>
-              <h2 className="text-xl font-bold text-white">Mentor Tasks</h2>
+              <h2 className="text-xl font-bold text-surface-900 dark:text-white">Mentor Tasks</h2>
             </div>
             <MentorTasksSection />
           </div>
