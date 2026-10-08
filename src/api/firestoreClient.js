@@ -20,6 +20,25 @@ import { db, isFirebaseConfigured } from '../config/firebase';
 
 const STORAGE_PREFIX = 'robotics_team_';
 
+// ============== Organization scoping ==============
+
+// Accounts and organizations live at the top level. Everything else belongs to
+// one organization and is stored under orgs/{orgId}/..., which is what keeps
+// one group's data out of another's.
+const GLOBAL_COLLECTIONS = ['users', 'orgs'];
+
+let currentOrgId = null;
+
+export function setOrgScope(orgId) {
+  currentOrgId = orgId || null;
+}
+
+function scoped(collectionName) {
+  if (GLOBAL_COLLECTIONS.includes(collectionName)) return collectionName;
+  if (!currentOrgId) throw new Error('No organization selected');
+  return `orgs/${currentOrgId}/${collectionName}`;
+}
+
 // ============== LocalStorage Fallback Functions ==============
 
 function localGetAll(collectionName) {
@@ -87,19 +106,19 @@ function localQuery(collectionName, filters = {}) {
 }
 
 function localGetSetting(key, defaultValue = null) {
-  const settings = localGetAll('settings');
+  const settings = localGetAll(scoped('settings'));
   const setting = settings.find(s => s.key === key);
   return setting ? setting.value : defaultValue;
 }
 
 function localSetSetting(key, value) {
-  const settings = localGetAll('settings');
+  const settings = localGetAll(scoped('settings'));
   const index = settings.findIndex(s => s.key === key);
 
   if (index === -1) {
-    return localCreate('settings', { key, value });
+    return localCreate(scoped('settings'), { key, value });
   } else {
-    return localUpdate('settings', settings[index].id, { value });
+    return localUpdate(scoped('settings'), settings[index].id, { value });
   }
 }
 
@@ -232,7 +251,7 @@ async function firestoreQuery(collectionName, filters = {}) {
  */
 async function firestoreGetSetting(key, defaultValue = null) {
   try {
-    const q = fsQuery(collection(db, 'settings'), where('key', '==', key));
+    const q = fsQuery(collection(db, scoped('settings')), where('key', '==', key));
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
@@ -250,15 +269,15 @@ async function firestoreGetSetting(key, defaultValue = null) {
  */
 async function firestoreSetSetting(key, value) {
   try {
-    const q = fsQuery(collection(db, 'settings'), where('key', '==', key));
+    const q = fsQuery(collection(db, scoped('settings')), where('key', '==', key));
     const querySnapshot = await getDocs(q);
 
     if (!querySnapshot.empty) {
-      const docRef = doc(db, 'settings', querySnapshot.docs[0].id);
+      const docRef = doc(db, scoped('settings'), querySnapshot.docs[0].id);
       await updateDoc(docRef, { value, updated_at: serverTimestamp() });
       return { id: querySnapshot.docs[0].id, key, value };
     } else {
-      const docRef = await addDoc(collection(db, 'settings'), {
+      const docRef = await addDoc(collection(db, scoped('settings')), {
         key,
         value,
         created_at: serverTimestamp(),
@@ -280,6 +299,7 @@ const shouldUseFirestore = () => isFirebaseConfigured() && db;
  * Get all items from a collection
  */
 export async function getAll(collectionName) {
+  collectionName = scoped(collectionName);
   if (shouldUseFirestore()) {
     return firestoreGetAll(collectionName);
   }
@@ -290,6 +310,7 @@ export async function getAll(collectionName) {
  * Get a single item by ID
  */
 export async function getById(collectionName, id) {
+  collectionName = scoped(collectionName);
   if (shouldUseFirestore()) {
     return firestoreGetById(collectionName, id);
   }
@@ -300,6 +321,7 @@ export async function getById(collectionName, id) {
  * Create a new item
  */
 export async function create(collectionName, data) {
+  collectionName = scoped(collectionName);
   if (shouldUseFirestore()) {
     return firestoreCreate(collectionName, data);
   }
@@ -310,6 +332,7 @@ export async function create(collectionName, data) {
  * Update an existing item
  */
 export async function update(collectionName, id, data) {
+  collectionName = scoped(collectionName);
   if (shouldUseFirestore()) {
     return firestoreUpdate(collectionName, id, data);
   }
@@ -320,6 +343,7 @@ export async function update(collectionName, id, data) {
  * Delete an item
  */
 export async function remove(collectionName, id) {
+  collectionName = scoped(collectionName);
   if (shouldUseFirestore()) {
     return firestoreRemove(collectionName, id);
   }
@@ -330,6 +354,7 @@ export async function remove(collectionName, id) {
  * Query items with filters
  */
 export async function queryItems(collectionName, filters = {}) {
+  collectionName = scoped(collectionName);
   if (shouldUseFirestore()) {
     return firestoreQuery(collectionName, filters);
   }
@@ -356,196 +381,6 @@ export async function setSetting(key, value) {
   return localSetSetting(key, value);
 }
 
-/**
- * Initialize with sample data if empty (localStorage only)
- */
-export async function initializeSampleData() {
-  // Only initialize sample data in localStorage mode
-  if (shouldUseFirestore()) {
-    console.log('Using Firestore - sample data initialization skipped');
-    return;
-  }
-
-  // Only initialize if no data exists
-  if (localGetAll('tasks').length > 0) return;
-
-  // Sample tasks
-  const sampleTasks = [
-    {
-      title: 'Prototype intake',
-      description: 'Build and test intake mechanism prototype',
-      team: 'Unhatched Plan',
-      category: 'FTC',
-      department: 'ELECTRICAL',
-      subsystem: 'Intake',
-      assigned_to: '',
-      start_date: new Date().toISOString(),
-      due_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'Not Started',
-      priority: 'Medium',
-      needs_mentor: false,
-    },
-    {
-      title: 'Assemble arm subsystem',
-      description: 'Complete assembly of robot arm',
-      team: 'Unhatched Plan',
-      category: 'FTC',
-      department: 'UNASSIGNED',
-      subsystem: 'Shooter',
-      assigned_to: 'Morgan',
-      start_date: new Date().toISOString(),
-      due_date: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'Not Started',
-      priority: 'Medium',
-      needs_mentor: false,
-    },
-    {
-      title: 'Program autonomous mode',
-      description: 'Implement autonomous navigation',
-      team: 'Unhatched Plan',
-      category: 'FTC',
-      department: 'UNASSIGNED',
-      subsystem: '',
-      assigned_to: 'Jordan',
-      start_date: new Date().toISOString(),
-      status: 'In Progress',
-      priority: 'High',
-      needs_mentor: true,
-    },
-    {
-      title: 'Build chassis prototype',
-      description: 'Construct initial chassis design',
-      team: 'Unhatched Plan',
-      category: 'FTC',
-      department: 'UNASSIGNED',
-      subsystem: 'Shooter',
-      assigned_to: 'Alex',
-      start_date: new Date().toISOString(),
-      due_date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-      status: 'Not Started',
-      priority: 'High',
-      needs_mentor: false,
-    },
-    {
-      title: 'Test drive train',
-      description: 'Verify drivetrain performance',
-      team: 'Weight on Our Shoulders',
-      category: 'FTC',
-      department: 'UNASSIGNED',
-      subsystem: '',
-      assigned_to: 'Casey',
-      start_date: new Date().toISOString(),
-      status: 'Not Started',
-      priority: 'Medium',
-      needs_mentor: false,
-    },
-    {
-      title: 'Design intake mechanism',
-      description: 'CAD design for intake system',
-      team: 'Weight on Our Shoulders',
-      category: 'FTC',
-      department: 'UNASSIGNED',
-      subsystem: '',
-      assigned_to: 'Sam',
-      start_date: new Date().toISOString(),
-      status: 'In Progress',
-      priority: 'Medium',
-      needs_mentor: false,
-    },
-    {
-      title: 'Wire electrical panel',
-      description: 'Complete wiring for control panel',
-      team: 'Icarus Innovated',
-      category: 'FRC',
-      department: 'UNASSIGNED',
-      subsystem: '',
-      assigned_to: 'Taylor',
-      start_date: new Date().toISOString(),
-      status: 'Not Started',
-      priority: 'High',
-      needs_mentor: true,
-    },
-    {
-      title: 'Practice driver skills',
-      description: 'Driver practice sessions',
-      team: 'New Hawks',
-      category: 'FRC',
-      department: 'UNASSIGNED',
-      subsystem: '',
-      assigned_to: 'Jamie',
-      start_date: new Date().toISOString(),
-      status: 'Not Started',
-      priority: 'Low',
-      needs_mentor: false,
-    },
-  ];
-
-  // Sample sponsors
-  const sampleSponsors = [
-    {
-      name: 'Tech Corp Industries',
-      amount: 5000,
-      contact_email: 'sponsor@techcorp.com',
-      status: 'Confirmed',
-      date_received: new Date().toISOString(),
-      notes: 'Annual sponsor since 2022',
-    },
-    {
-      name: 'Local Hardware Store',
-      amount: 500,
-      contact_email: 'support@localhardware.com',
-      status: 'Pending',
-      date_received: null,
-      notes: 'Waiting for confirmation',
-    },
-    {
-      name: 'Engineering Foundation',
-      amount: 2500,
-      contact_email: 'grants@engfoundation.org',
-      status: 'Received',
-      date_received: new Date().toISOString(),
-      notes: 'Grant for STEM education',
-    },
-  ];
-
-  // Sample expenses
-  const sampleExpenses = [
-    {
-      description: 'Motor controllers (4x)',
-      amount: 320,
-      category: 'Parts',
-      team: 'Build Team',
-      date: new Date().toISOString(),
-      receipt_url: '',
-    },
-    {
-      description: 'Competition registration',
-      amount: 150,
-      category: 'Registration',
-      team: 'All Teams',
-      date: new Date().toISOString(),
-      receipt_url: '',
-    },
-    {
-      description: 'Team t-shirts',
-      amount: 450,
-      category: 'Marketing',
-      team: 'Outreach Team',
-      date: new Date().toISOString(),
-      receipt_url: '',
-    },
-  ];
-
-  // Initialize sample data
-  sampleTasks.forEach(task => localCreate('tasks', task));
-  sampleSponsors.forEach(sponsor => localCreate('sponsors', sponsor));
-  sampleExpenses.forEach(expense => localCreate('expenses', expense));
-
-  // Initialize settings
-  localSetSetting('total_budget', 10000);
-  localSetSetting('banner_message', 'Welcome to the Robotics Team Dashboard! Competition season starts soon.');
-}
-
 // Export for backwards compatibility
 export const query = queryItems;
 
@@ -559,7 +394,7 @@ const firestoreClient = {
   query: queryItems,
   getSetting,
   setSetting,
-  initializeSampleData,
+  setOrgScope,
 };
 
 export default firestoreClient;

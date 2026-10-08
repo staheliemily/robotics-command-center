@@ -10,8 +10,8 @@ import {
 } from '../ui/select';
 import { Badge } from '../ui/badge';
 import { cn } from '../../lib/utils';
+import { useTeams } from '../../hooks/useTeams';
 
-const teams = ['All Teams', 'Unhatched Plan', 'Weight on Our Shoulders', 'Icarus Innovated', 'New Hawks'];
 const categories = ['All', 'FTC', 'FRC'];
 const statuses = ['All', 'Not Started', 'In Progress', 'Blocked', 'Completed'];
 const priorities = ['All', 'Low', 'Medium', 'High', 'Critical'];
@@ -23,6 +23,8 @@ export function TaskFilters({
   onClearFilters,
   className,
 }) {
+  const { teamNames } = useTeams();
+  const teams = ['All Teams', ...teamNames];
   const activeFilterCount = Object.values(filters).filter(
     v => v && v !== 'All' && v !== 'All Teams'
   ).length;

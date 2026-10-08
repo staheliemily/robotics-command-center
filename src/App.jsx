@@ -9,6 +9,10 @@ import Reports from './pages/Reports';
 import TaskTracking from './pages/TaskTracking';
 import Wishlist from './pages/Wishlist';
 import MentorTasks from './pages/MentorTasks';
+import Users from './pages/Users';
+import AccessPending from './pages/AccessPending';
+import Onboarding from './pages/Onboarding';
+import Join from './pages/Join';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -21,8 +25,8 @@ const queryClient = new QueryClient({
 });
 
 // Protected Route component
-function ProtectedRoute({ children }) {
-  const { isAuthenticated, loading } = useAuth();
+function ProtectedRoute({ children, adminOnly = false }) {
+  const { isAuthenticated, isActive, isAdmin, needsOrganization, loading } = useAuth();
 
   if (loading) {
     return (
@@ -34,6 +38,20 @@ function ProtectedRoute({ children }) {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  // Verified, but not part of any organization yet: start one or join one
+  if (needsOrganization) {
+    return <Onboarding />;
+  }
+
+  // Signed in, but email unverified or not yet approved by an admin
+  if (!isActive) {
+    return <AccessPending />;
+  }
+
+  if (adminOnly && !isAdmin) {
+    return <Navigate to="/" replace />;
   }
 
   return children;
@@ -106,6 +124,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute>
             <MentorTasks />
+          </ProtectedRoute>
+        }
+      />
+      <Route path="/join" element={<Join />} />
+      <Route
+        path="/users"
+        element={
+          <ProtectedRoute adminOnly>
+            <Users />
           </ProtectedRoute>
         }
       />

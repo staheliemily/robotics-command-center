@@ -4,6 +4,7 @@ import { ChevronDown, ChevronRight, Plus } from 'lucide-react';
 import { useMilestones } from '../../hooks/useMilestones';
 import { useUpdateTask } from '../../hooks/useTasks';
 import { useUpdateMilestone } from '../../hooks/useMilestones';
+import { useAuth } from '../../context/AuthContext';
 import { cn } from '../../lib/utils';
 
 const VIEW_MODES = [
@@ -19,12 +20,20 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
   const ganttRef = useRef(null);
   const lastUpdateTimeRef = useRef(0);
   const isDraggingRef = useRef(false);
+  const ganttTasksRef = useRef([]);
   const { data: allMilestones = [] } = useMilestones();
   const [viewMode, setViewMode] = useState('Week');
   const [containerWidth, setContainerWidth] = useState(0);
   const [expandedMilestones, setExpandedMilestones] = useState(new Set());
   const updateTask = useUpdateTask();
   const updateMilestone = useUpdateMilestone();
+  const { canEditAnyTask, canEditTask } = useAuth();
+
+  // Whether the signed-in user may change this bar; if not, the drag is undone
+  const canChangeBar = useCallback((bar) => (
+    bar._type === 'milestone' ? canEditAnyTask : canEditTask(bar._original)
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ), [canEditAnyTask, canEditTask]);
 
   // Initialize all milestones as expanded
   useEffect(() => {
@@ -138,6 +147,7 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
 
     return result;
   }, [taskHierarchy]);
+  ganttTasksRef.current = ganttTasks;
 
   const toggleMilestone = (id) => {
     setExpandedMilestones(prev => {
@@ -169,6 +179,11 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
   const handleDateChange = useCallback(async (task, start, end) => {
     // Mark that we were dragging so click handler doesn't fire
     isDraggingRef.current = true;
+
+    if (!canChangeBar(task)) {
+      ganttRef.current?.refresh(ganttTasksRef.current);
+      return;
+    }
     // Mark update time to prevent refresh from interfering
     lastUpdateTimeRef.current = Date.now();
 
@@ -194,11 +209,16 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
         console.error('Failed to update task:', error);
       }
     }
-  }, [updateTask, updateMilestone]);
+  }, [updateTask, updateMilestone, canChangeBar]);
 
   const handleProgressChange = useCallback(async (task, progress) => {
     // Mark that we were dragging so click handler doesn't fire
     isDraggingRef.current = true;
+
+    if (!canChangeBar(task)) {
+      ganttRef.current?.refresh(ganttTasksRef.current);
+      return;
+    }
     // Mark update time to prevent refresh from interfering
     lastUpdateTimeRef.current = Date.now();
 
@@ -213,7 +233,7 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
         console.error('Failed to update task progress:', error);
       }
     }
-  }, [updateTask]);
+  }, [updateTask, canChangeBar]);
 
   // Calculate column width
   const columnWidth = useMemo(() => {

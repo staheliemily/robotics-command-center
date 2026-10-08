@@ -112,16 +112,17 @@ export function SponsorGrid({ className }) {
   return (
     <div className={cn("p-4 md:p-6", className)}>
       {/* Summary Cards */}
-      <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Two across: this panel is half the page wide on large screens, so four never fit */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="rounded-lg bg-green-100 p-2 dark:bg-green-900">
                 <DollarSign className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-surface-500">Total Sponsors</p>
-                <p className="text-2xl font-bold">{formatCurrency(stats.totalAmount)}</p>
+                <p className="truncate text-xl font-bold sm:text-2xl">{formatCurrency(stats.totalAmount)}</p>
               </div>
             </div>
           </CardContent>
@@ -133,9 +134,9 @@ export function SponsorGrid({ className }) {
               <div className="rounded-lg bg-yellow-100 p-2 dark:bg-yellow-900">
                 <Building2 className="h-5 w-5 text-yellow-600 dark:text-yellow-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-surface-500">Pending</p>
-                <p className="text-2xl font-bold">{formatCurrency(stats.pendingAmount)}</p>
+                <p className="truncate text-xl font-bold sm:text-2xl">{formatCurrency(stats.pendingAmount)}</p>
               </div>
             </div>
           </CardContent>
@@ -147,9 +148,9 @@ export function SponsorGrid({ className }) {
               <div className="rounded-lg bg-blue-100 p-2 dark:bg-blue-900">
                 <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-surface-500">Confirmed</p>
-                <p className="text-2xl font-bold">{formatCurrency(stats.confirmedAmount)}</p>
+                <p className="truncate text-xl font-bold sm:text-2xl">{formatCurrency(stats.confirmedAmount)}</p>
               </div>
             </div>
           </CardContent>
@@ -161,9 +162,9 @@ export function SponsorGrid({ className }) {
               <div className="rounded-lg bg-green-100 p-2 dark:bg-green-900">
                 <Building2 className="h-5 w-5 text-green-600 dark:text-green-400" />
               </div>
-              <div>
+              <div className="min-w-0">
                 <p className="text-sm text-surface-500">Received</p>
-                <p className="text-2xl font-bold">{formatCurrency(stats.receivedAmount)}</p>
+                <p className="truncate text-xl font-bold sm:text-2xl">{formatCurrency(stats.receivedAmount)}</p>
               </div>
             </div>
           </CardContent>
@@ -182,7 +183,7 @@ export function SponsorGrid({ className }) {
       </div>
 
       {/* Sponsor Cards */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {sponsors.length === 0 ? (
           <div className="col-span-full py-12 text-center text-surface-500">
             No sponsors yet. {isAdmin && 'Click "Add Sponsor" to add one.'}

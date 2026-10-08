@@ -1,8 +1,8 @@
 import { render, screen } from '@testing-library/react';
 import App from './App';
 
-test('renders learn react link', () => {
+test('shows the login page when signed out', async () => {
   render(<App />);
-  const linkElement = screen.getByText(/learn react/i);
-  expect(linkElement).toBeInTheDocument();
+  expect(await screen.findByText('Robotics Team Dashboard')).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: 'Sign In' })).toBeInTheDocument();
 });

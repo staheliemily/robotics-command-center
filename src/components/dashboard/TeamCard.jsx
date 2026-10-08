@@ -24,7 +24,7 @@ const priorityBadgeVariants = {
 export function TeamCard({ teamName, category, color = 'blue' }) {
   const { data: allTasks = [] } = useTasks();
   const updateTask = useUpdateTask();
-  const { isAdmin } = useAuth();
+  const { canCreateTaskFor, canEditTask } = useAuth();
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
   const [statusFilter, setStatusFilter] = useState('all');
@@ -66,6 +66,7 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
 
   const handleToggleComplete = async (task, e) => {
     e.stopPropagation();
+    if (!canEditTask(task)) return;
     const newStatus = task.status === 'Completed' ? 'Not Started' : 'Completed';
     await updateTask.mutateAsync({ id: task.id, data: { status: newStatus } });
   };
@@ -103,7 +104,7 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
           </div>
 
           {/* Add Button */}
-          {isAdmin && (
+          {canCreateTaskFor(teamName) && (
             <Button
               size="sm"
               onClick={() => setShowAddModal(true)}
@@ -171,7 +172,9 @@ export function TeamCard({ teamName, category, color = 'blue' }) {
                   {/* Checkbox */}
                   <button
                     onClick={(e) => handleToggleComplete(task, e)}
+                    disabled={!canEditTask(task)}
                     className={cn(
+                      "disabled:cursor-not-allowed disabled:opacity-50",
                       "w-4 h-4 sm:w-5 sm:h-5 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0",
                       task.status === 'Completed'
                         ? "bg-green-500 border-green-500"

@@ -22,14 +22,11 @@ import { Switch } from '../ui/switch';
 import { Popover, PopoverContent, PopoverTrigger } from '../ui/popover';
 import { Calendar } from '../ui/calendar';
 import { useCreateTask } from '../../hooks/useTasks';
+import { useAuth } from '../../context/AuthContext';
+import { useTeams } from '../../hooks/useTeams';
 import { MilestoneSelect } from '../milestones/MilestoneSelect';
 import { cn } from '../../lib/utils';
 
-// FTC Teams
-const ftcTeams = ['Unhatched Plan', 'Weight on Our Shoulders'];
-// FRC Teams
-const frcTeams = ['Icarus Innovated', 'New Hawks'];
-const allTeams = [...ftcTeams, ...frcTeams];
 
 const categories = ['FTC', 'FRC'];
 const statuses = ['Not Started', 'In Progress', 'Blocked', 'Completed'];
@@ -59,6 +56,12 @@ export function AddTaskModal({ open, onOpenChange, defaultTeam, defaultCategory 
     category: defaultCategory || '',
   });
   const createTask = useCreateTask();
+  const { canEditAnyTask, team: myTeam } = useAuth();
+  const { teamNames: allTeams, namesIn } = useTeams();
+  const ftcTeams = namesIn('FTC');
+  const frcTeams = namesIn('FRC');
+  // Members may only create tasks for their own team
+  const allowedTeams = (teams) => (canEditAnyTask ? teams : teams.filter(t => t === myTeam));
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -162,7 +165,7 @@ export function AddTaskModal({ open, onOpenChange, defaultTeam, defaultCategory 
                   <SelectValue placeholder="Select team" />
                 </SelectTrigger>
                 <SelectContent>
-                  {(formData.category === 'FTC' ? ftcTeams :
+                  {allowedTeams(formData.category === 'FTC' ? ftcTeams :
                     formData.category === 'FRC' ? frcTeams :
                     allTeams).map((team) => (
                     <SelectItem key={team} value={team}>

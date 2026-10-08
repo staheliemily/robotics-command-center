@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, Mail, Lock, Chrome, AlertCircle } from 'lucide-react';
+import { Bot, Mail, Lock, Chrome, AlertCircle, UserPlus } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input, Label } from '../components/ui/input';
 import { useAuth } from '../context/AuthContext';
-import { cn } from '../lib/utils';
+import { ROLE_LABELS, peekInvite } from '../lib/teams';
 
 export function Login() {
   const navigate = useNavigate();
   const { signInWithEmail, signUpWithEmail, signInWithGoogle, isDemo, error } = useAuth();
-  const [isSignUp, setIsSignUp] = useState(false);
+  // Set by the /join page when someone opens an invite link
+  const [invite] = useState(peekInvite);
+  // People arriving on an invite link are new, so start them on sign-up
+  const [isSignUp, setIsSignUp] = useState(!!invite);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -61,6 +64,23 @@ export function Login() {
             {isSignUp ? 'Create an account to get started' : 'Sign in to manage your team'}
           </CardDescription>
 
+          {invite && (
+            <div className="mt-4 rounded-lg bg-primary-50 p-3 text-left text-sm text-primary-800 dark:bg-primary-900/30 dark:text-primary-200">
+              <div className="flex items-start gap-2">
+                <UserPlus className="h-5 w-5 flex-shrink-0" />
+                <div>
+                  <p className="font-medium">
+                    You're invited as a {ROLE_LABELS[invite.role].toLowerCase()}
+                    {invite.teams.length > 0 && ` on ${invite.teams.join(', ')}`}
+                  </p>
+                  <p className="mt-1 text-xs opacity-80">
+                    Create an account, or sign in if you already have one. An admin will confirm you before you get in.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
           {isDemo && (
             <div className="mt-4 rounded-lg bg-yellow-50 p-3 text-left text-sm text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
               <div className="flex items-start gap-2">
@@ -68,7 +88,7 @@ export function Login() {
                 <div>
                   <p className="font-medium">Demo Mode</p>
                   <p className="mt-1 text-xs opacity-80">
-                    Firebase is not configured. Enter any email/password to continue with demo data.
+                    Firebase is not configured. Enter any email/password to continue. Anything you add is saved in this browser only.
                   </p>
                 </div>
               </div>

@@ -1,0 +1,145 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function memberDoc() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+    function isActive() {
+      return request.auth != null
+        && request.auth.token.email_verified == true
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && memberDoc().status == 'active';
+    }
+    function role()   { return memberDoc().role; }
+    function myTeam() { return memberDoc().team; }
+    function myOrg()  { return memberDoc().get('org_id', null); }
+
+    // An approved member of this particular organization. Every rule for an
+    // organization's data goes through this, which is what keeps one group
+    // from reading or writing another's.
+    function inOrg(orgId) {
+      return isActive() && myOrg() != null && myOrg() == orgId;
+    }
+    function isOrgAdmin(orgId) {
+      return inOrg(orgId) && role() == 'admin';
+    }
+
+    match /users/{uid} {
+      // A signed-in user may create only their own pending record, and may not
+      // grant themselves a team or a role in the process. They may name the
+      // organization they want to join; that gives them nothing until one of
+      // its admins approves.
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.status == 'pending'
+        && request.resource.data.role == null
+        && request.resource.data.team == null;
+
+      // Yourself, or anyone attached to the organization you administer. The
+      // second form is also what lets an admin list their own people.
+      allow read: if request.auth != null && (
+        request.auth.uid == uid
+        || (resource.data.get('org_id', null) != null && isOrgAdmin(resource.data.org_id))
+      );
+
+      allow update: if request.auth != null && (
+        // An admin manages people in their own organization and cannot move
+        // them to another one.
+        (resource.data.get('org_id', null) != null
+          && isOrgAdmin(resource.data.org_id)
+          && request.resource.data.org_id == resource.data.org_id)
+
+        // Someone who is not an approved member anywhere may ask to join an
+        // organization, or withdraw the request. They stay pending with no role.
+        || (request.auth.uid == uid
+          && (resource.data.status == 'pending' || resource.data.get('org_id', null) == null)
+          && request.resource.data.status == 'pending'
+          && request.resource.data.role == null
+          && request.resource.data.team == null)
+
+        // Someone with no organization becomes the admin of one they created.
+        // This is the only way to gain a role without an admin's approval.
+        || (request.auth.uid == uid
+          && request.auth.token.email_verified == true
+          && resource.data.get('org_id', null) == null
+          && request.resource.data.org_id is string
+          && get(/databases/$(database)/documents/orgs/$(request.resource.data.org_id)).data.created_by == uid
+          && request.resource.data.role == 'admin'
+          && request.resource.data.status == 'active')
+      );
+
+      allow delete: if resource.data.get('org_id', null) != null
+        && isOrgAdmin(resource.data.org_id);
+    }
+
+    match /orgs/{orgId} {
+      // Reading one organization by its id shows only its name and team list;
+      // an invite link needs that. Listing organizations is never allowed.
+      allow get: if request.auth != null;
+
+      allow create: if request.auth != null
+        && request.auth.token.email_verified == true
+        && request.resource.data.created_by == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.name.size() > 0
+        && request.resource.data.name.size() <= 80;
+
+      // created_by decides who may claim the organization, so it never changes.
+      allow update: if isOrgAdmin(orgId)
+        && request.resource.data.created_by == resource.data.created_by;
+
+      match /tasks/{id} {
+        allow read: if inOrg(orgId);
+        allow create: if inOrg(orgId) && (
+          role() in ['admin', 'mentor']
+          || (role() == 'member' && request.resource.data.team == myTeam())
+        );
+        // An update checks BOTH sides. Checking only request.resource.data.team
+        // lets a member pull another team's task into their own team and then
+        // edit it freely — a one-request theft that reads as authorised.
+        allow update: if inOrg(orgId) && (
+          role() in ['admin', 'mentor']
+          || (role() == 'member'
+              && resource.data.team == myTeam()
+              && request.resource.data.team == myTeam())
+        );
+        // resource, not request.resource: the latter is null on a delete.
+        allow delete: if inOrg(orgId) && (
+          role() in ['admin', 'mentor']
+          || (role() == 'member' && resource.data.team == myTeam())
+        );
+      }
+
+      match /milestones/{id} {
+        allow read: if inOrg(orgId);
+        allow write: if inOrg(orgId) && role() in ['admin', 'mentor'];
+      }
+
+      match /expenses/{id} {
+        allow read: if inOrg(orgId);
+        allow write: if isOrgAdmin(orgId);
+      }
+      match /sponsors/{id} {
+        allow read: if inOrg(orgId);
+        allow write: if isOrgAdmin(orgId);
+      }
+      match /settings/{id} {
+        allow read: if inOrg(orgId);
+        allow write: if isOrgAdmin(orgId);
+      }
+
+      // Both exist as real collections and are client-gated on canEditAnyTask.
+      // Omitting them would deny every role, reads included — Firestore's
+      // default is deny, so a collection with no match block is invisible.
+      match /mentor_tasks/{id} {
+        allow read: if inOrg(orgId);
+        allow write: if inOrg(orgId) && role() in ['admin', 'mentor', 'member'];
+      }
+      match /wishlist/{id} {
+        allow read: if inOrg(orgId);
+        allow write: if inOrg(orgId) && role() in ['admin', 'mentor', 'member'];
+      }
+    }
+  }
+}

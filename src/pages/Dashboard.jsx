@@ -1,25 +1,23 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import {
   Bot,
-  BarChart3,
-  LogOut,
-  RefreshCw,
   Clock,
   Edit2,
   Check,
   X,
-  Settings,
   DollarSign,
   Wallet,
   Receipt,
-  ListTodo,
-  Heart,
   Users,
+  Circle,
+  CheckCircle2,
 } from 'lucide-react';
+import AppHeader from '../components/layout/AppHeader';
+import { useTasks } from '../hooks/useTasks';
+import { useUsers } from '../hooks/useUsers';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
-import ThemeToggle from '../components/dashboard/ThemeToggle';
 import TeamCard from '../components/dashboard/TeamCard';
 import MentorTasksSection from '../components/dashboard/MentorTasksSection';
 import SponsorGrid from '../components/finance/SponsorGrid';
@@ -27,20 +25,8 @@ import BudgetGrid from '../components/finance/BudgetGrid';
 import ExpenseList from '../components/finance/ExpenseList';
 import { useAuth } from '../context/AuthContext';
 import { useBannerMessage, useUpdateBannerMessage } from '../hooks/useSettings';
-import firestoreClient from '../api/firestoreClient';
 import { cn } from '../lib/utils';
-
-// FTC Teams configuration
-const FTC_TEAMS = [
-  { name: 'Unhatched Plan', color: 'blue' },
-  { name: 'Weight on Our Shoulders', color: 'green' },
-];
-
-// FRC Teams configuration
-const FRC_TEAMS = [
-  { name: 'Icarus Innovated', color: 'orange' },
-  { name: 'New Hawks', color: 'red' },
-];
+import { useTeams } from '../hooks/useTeams';
 
 function AnnouncementBanner() {
   const { data: message, isLoading } = useBannerMessage();
@@ -130,129 +116,89 @@ function CategorySection({ title, icon: Icon, teams, category, iconColor }) {
   );
 }
 
+// Shown to an admin until the organization has teams, people and a first task
+function GettingStarted({ hasTeams }) {
+  const { user } = useAuth();
+  const { data: tasks = [] } = useTasks();
+  const { data: people = [] } = useUsers();
+
+  const steps = [
+    {
+      done: hasTeams,
+      title: 'Add your teams',
+      detail: 'Name each team and mark it FTC or FRC.',
+      to: '/users',
+      action: 'Add teams',
+    },
+    {
+      done: people.some(p => p.id !== user?.uid),
+      title: 'Invite your students and mentors',
+      detail: 'Copy an invite link and send it to them. You approve each person as they join.',
+      to: '/users',
+      action: 'Get invite link',
+    },
+    {
+      done: tasks.length > 0,
+      title: 'Add your first task',
+      detail: hasTeams ? 'Use the Add button on a team below.' : 'Available once you have a team.',
+    },
+  ];
+
+  if (steps.every(step => step.done)) return null;
+
+  const nextStep = steps.find(step => !step.done);
+
+  return (
+    <div className="mb-8 rounded-lg border border-primary-500/30 bg-primary-500/5 p-4 sm:p-6">
+      <h2 className="text-lg font-bold text-white">Let's get you set up</h2>
+      <p className="mt-1 text-sm text-surface-400">Three steps and your group is ready to go.</p>
+
+      <ol className="mt-4 space-y-3">
+        {steps.map((step) => (
+          <li key={step.title} className="flex items-start gap-3">
+            {step.done ? (
+              <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0 text-green-500" />
+            ) : (
+              <Circle className="mt-0.5 h-5 w-5 flex-shrink-0 text-surface-500" />
+            )}
+            {/* Button sits beside the text on wide screens and under it on phones */}
+            <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <div className="min-w-0">
+                <p className={cn('font-medium', step.done ? 'text-surface-500 line-through' : 'text-surface-100')}>
+                  {step.title}
+                </p>
+                {!step.done && <p className="text-sm text-surface-400">{step.detail}</p>}
+              </div>
+              {!step.done && step.to && (
+                <Link to={step.to} className="flex-shrink-0">
+                  <Button size="sm" variant={step === nextStep ? 'default' : 'outline'} className={step === nextStep ? '' : 'border-surface-700'}>
+                    {step.action}
+                  </Button>
+                </Link>
+              )}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export function Dashboard() {
-  const navigate = useNavigate();
-  const { user, logout, isAdmin, setRole } = useAuth();
+  const { isAdmin, org, myTeams, viewTeam, setViewTeam } = useAuth();
 
-  // Initialize sample data on first load
-  useEffect(() => {
-    firestoreClient.initializeSampleData();
-  }, []);
+  const { teams, teamNames, teamsIn } = useTeams();
 
-  const handleLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
-
-  const handleRefresh = () => {
-    window.location.reload();
-  };
-
-  const toggleAdminMode = () => {
-    setRole(isAdmin ? 'viewer' : 'admin');
-    window.location.reload();
-  };
+  // People on specific teams choose between those; everyone else can pick any team
+  const ownTeams = myTeams.filter(t => teamNames.includes(t));
+  const teamChoices = ownTeams.length > 0 ? ownTeams : teamNames;
+  const showTeam = (t) => !viewTeam || t.name === viewTeam;
+  const ftcTeams = teamsIn('FTC').filter(showTeam);
+  const frcTeams = teamsIn('FRC').filter(showTeam);
 
   return (
     <div className="min-h-screen bg-surface-900">
-      {/* Header */}
-      <header className="border-b border-surface-800 bg-surface-900">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-14 sm:h-16 items-center justify-between">
-            {/* Logo & Title */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary-600">
-                <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-sm sm:text-lg font-bold text-white">Robotics HQ</h1>
-                <p className="hidden sm:block text-xs text-surface-400">Team schedules, tasks & budget tracking</p>
-              </div>
-            </div>
-
-            {/* Right side */}
-            <div className="flex items-center gap-1 sm:gap-2">
-              {/* Admin Toggle - Icon only on mobile */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={toggleAdminMode}
-                className="text-xs border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
-              >
-                <Settings className="h-3.5 w-3.5 sm:mr-1" />
-                <span className="hidden sm:inline">{isAdmin ? 'Admin' : 'Viewer'}</span>
-              </Button>
-
-              {/* Theme Toggle */}
-              <ThemeToggle />
-
-              {/* Refresh - Icon only on mobile */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleRefresh}
-                className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
-              >
-                <RefreshCw className="h-4 w-4 sm:mr-1" />
-                <span className="hidden sm:inline">Refresh</span>
-              </Button>
-
-              {/* Task Tracking Link - Icon only on mobile */}
-              <Link to="/tasks">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
-                >
-                  <ListTodo className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Tasks</span>
-                </Button>
-              </Link>
-
-              {/* Wishlist Link - Icon only on mobile */}
-              <Link to="/wishlist">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
-                >
-                  <Heart className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Wishlist</span>
-                </Button>
-              </Link>
-
-              {/* Mentor Tasks Link - Icon only on mobile */}
-              <Link to="/mentor-tasks">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
-                >
-                  <Users className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Mentors</span>
-                </Button>
-              </Link>
-
-              {/* Reports Link - Icon only on mobile */}
-              <Link to="/reports">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="border-surface-700 hover:bg-surface-800 px-2 sm:px-3"
-                >
-                  <BarChart3 className="h-4 w-4 sm:mr-1" />
-                  <span className="hidden sm:inline">Reports</span>
-                </Button>
-              </Link>
-
-              {/* Logout */}
-              <Button variant="ghost" size="icon" onClick={handleLogout} className="text-surface-400 hover:text-white h-8 w-8 sm:h-9 sm:w-9">
-                <LogOut className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
       <main className="py-6">
@@ -260,23 +206,53 @@ export function Dashboard() {
         <AnnouncementBanner />
 
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          {isAdmin && <GettingStarted hasTeams={teams.length > 0} />}
+
+          {teams.length === 0 ? (
+            !isAdmin && (
+              <div className="mb-10 rounded-lg border border-dashed border-surface-700 p-8 text-center text-surface-400">
+                <p className="font-medium text-surface-200">Welcome to {org?.name}</p>
+                <p className="mt-1 text-sm">Your admin hasn't added any teams yet. Tasks will show up here once they do.</p>
+              </div>
+            )
+          ) : (
+            <div className="mb-6 flex items-center gap-2">
+              <label htmlFor="view-team" className="text-sm text-surface-400">Viewing</label>
+              <select
+                id="view-team"
+                value={viewTeam || ''}
+                onChange={(e) => setViewTeam(e.target.value || null)}
+                className="rounded-md border border-surface-700 bg-surface-800 px-3 py-1.5 text-sm text-surface-100 focus:outline-none focus:ring-1 focus:ring-primary-500"
+              >
+                <option value="">All teams</option>
+                {teamChoices.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
           {/* FTC Teams Section */}
-          <CategorySection
-            title="FTC Teams"
-            icon={Bot}
-            iconColor="bg-orange-500"
-            teams={FTC_TEAMS}
-            category="FTC"
-          />
+          {ftcTeams.length > 0 && (
+            <CategorySection
+              title="FTC Teams"
+              icon={Bot}
+              iconColor="bg-orange-500"
+              teams={ftcTeams}
+              category="FTC"
+            />
+          )}
 
           {/* FRC Teams Section */}
-          <CategorySection
-            title="FRC Teams"
-            icon={Bot}
-            iconColor="bg-red-600"
-            teams={FRC_TEAMS}
-            category="FRC"
-          />
+          {frcTeams.length > 0 && (
+            <CategorySection
+              title="FRC Teams"
+              icon={Bot}
+              iconColor="bg-red-600"
+              teams={frcTeams}
+              category="FRC"
+            />
+          )}
 
           {/* Business Section */}
           <div className="mb-10">

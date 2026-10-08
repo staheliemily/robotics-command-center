@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import firestoreClient from '../api/firestoreClient';
+import { useTeams } from './useTeams';
 
 const COLLECTION = 'tasks';
 
@@ -72,6 +73,7 @@ export function useTasksByCategory(category) {
 
 export function useTaskStats() {
   const { data: tasks = [] } = useTasks();
+  const { teamNames } = useTeams();
 
   const stats = {
     total: tasks.length,
@@ -81,12 +83,9 @@ export function useTaskStats() {
     completed: tasks.filter(t => t.status === 'Completed').length,
     critical: tasks.filter(t => t.priority === 'Critical').length,
     needsMentor: tasks.filter(t => t.needs_mentor).length,
-    byTeam: {
-      'Unhatched Plan': tasks.filter(t => t.team === 'Unhatched Plan').length,
-      'Weight on Our Shoulders': tasks.filter(t => t.team === 'Weight on Our Shoulders').length,
-      'Icarus Innovated': tasks.filter(t => t.team === 'Icarus Innovated').length,
-      'New Hawks': tasks.filter(t => t.team === 'New Hawks').length,
-    },
+    byTeam: Object.fromEntries(
+      teamNames.map(name => [name, tasks.filter(t => t.team === name).length])
+    ),
     byCategory: {
       'FTC': tasks.filter(t => t.category === 'FTC').length,
       'FRC': tasks.filter(t => t.category === 'FRC').length,

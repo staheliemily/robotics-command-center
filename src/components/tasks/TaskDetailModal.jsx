@@ -26,16 +26,18 @@ import { useUpdateTask, useDeleteTask } from '../../hooks/useTasks';
 import { useMilestone } from '../../hooks/useMilestones';
 import { MilestoneSelect } from '../milestones/MilestoneSelect';
 import { useAuth } from '../../context/AuthContext';
+import { useTeams } from '../../hooks/useTeams';
 import { formatDate, cn } from '../../lib/utils';
 
-const teams = ['Unhatched Plan', 'Weight on Our Shoulders', 'Icarus Innovated', 'New Hawks'];
 const categories = ['FTC', 'FRC'];
 const statuses = ['Not Started', 'In Progress', 'Blocked', 'Completed'];
 const priorities = ['Low', 'Medium', 'High', 'Critical'];
 const departments = ['Mechanical', 'Electrical', 'Software', 'Marketing', 'Operations'];
 
 export function TaskDetailModal({ task, open, onOpenChange }) {
-  const { isAdmin } = useAuth();
+  const { canEditTask } = useAuth();
+  const canEdit = canEditTask(task);
+  const { teamNames: teams } = useTeams();
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({});
   const updateTask = useUpdateTask();
@@ -102,7 +104,7 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
                 {isEditing ? 'Update the task information below.' : `Created ${formatDate(task.created_at)}`}
               </DialogDescription>
             </div>
-            {isAdmin && !isEditing && (
+            {canEdit && !isEditing && (
               <div className="flex gap-1">
                 <Button
                   variant="ghost"
@@ -363,7 +365,7 @@ export function TaskDetailModal({ task, open, onOpenChange }) {
               <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
                 Close
               </Button>
-              {isAdmin && (
+              {canEdit && (
                 <Button onClick={() => setIsEditing(true)} className="w-full sm:w-auto">
                   <Edit2 className="mr-2 h-4 w-4" />
                   Edit Task

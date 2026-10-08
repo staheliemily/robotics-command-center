@@ -1,5 +1,4 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
 import {
   PieChart,
   Pie,
@@ -16,19 +15,16 @@ import {
   CartesianGrid,
 } from 'recharts';
 import {
-  Bot,
   LayoutDashboard,
   ListTodo,
   BarChart3,
-  ArrowLeft,
   TrendingUp,
   Users,
   CheckCircle,
   AlertTriangle,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { Button } from '../components/ui/button';
-import ThemeToggle from '../components/dashboard/ThemeToggle';
+import { AppHeader, PageHeading } from '../components/layout/AppHeader';
 import { useTaskStats, useTasks } from '../hooks/useTasks';
 import { useExpenseStats } from '../hooks/useExpenses';
 import { useSponsorStats } from '../hooks/useSponsors';
@@ -59,23 +55,11 @@ export function Reports() {
   ];
 
   // Prepare team comparison data
-  const teamComparisonData = [
-    {
-      name: 'Build',
-      total: taskStats.byTeam['Build Team'] || 0,
-      completed: tasks.filter(t => t.team === 'Build Team' && t.status === 'Completed').length,
-    },
-    {
-      name: 'Programming',
-      total: taskStats.byTeam['Programming Team'] || 0,
-      completed: tasks.filter(t => t.team === 'Programming Team' && t.status === 'Completed').length,
-    },
-    {
-      name: 'Outreach',
-      total: taskStats.byTeam['Outreach Team'] || 0,
-      completed: tasks.filter(t => t.team === 'Outreach Team' && t.status === 'Completed').length,
-    },
-  ];
+  const teamComparisonData = Object.entries(taskStats.byTeam).map(([team, total]) => ({
+    name: team,
+    total,
+    completed: tasks.filter(t => t.team === team && t.status === 'Completed').length,
+  }));
 
   // Prepare category data
   const categoryData = [
@@ -93,33 +77,11 @@ export function Reports() {
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-surface-200 bg-white/80 backdrop-blur-sm dark:border-surface-800 dark:bg-surface-900/80">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Link to="/">
-                <Button variant="ghost" size="icon">
-                  <ArrowLeft className="h-5 w-5" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary-600">
-                  <Bot className="h-6 w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-lg font-bold">Reports</h1>
-                  <p className="text-xs text-surface-500">Analytics & Insights</p>
-                </div>
-              </div>
-            </div>
-            <ThemeToggle />
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <PageHeading icon={BarChart3} title="Reports" subtitle="Analytics & Insights" />
         {/* Summary Cards */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>

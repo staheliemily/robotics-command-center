@@ -1,70 +1,76 @@
-# Getting Started with Create React App
+# Robotics Command Center
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A dashboard for running FTC and FRC robotics teams: task tracking (list, calendar and Gantt views), mentor tasks, a wishlist, and budget, expense and sponsor reports.
 
-## Available Scripts
+Built with React (Create React App), Tailwind CSS, and Firebase (Auth, Firestore, Hosting).
 
-In the project directory, you can run:
+## How it is organized
 
-### `npm start`
+Any group can sign up and run itself. Nothing about a particular club is built in.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+- **Organizations.** Someone signs up, creates an organization, and becomes its admin. Each organization has its own teams, tasks, milestones, mentor tasks, wishlist, sponsors, expenses and settings, stored under `orgs/{orgId}/...`. One organization cannot see or change another's.
+- **Teams.** The admin adds teams on the People page (`/users`) and marks each as FTC or FRC.
+- **Joining.** The admin copies an invite link from the People page. Whoever opens it signs up (or signs in) and shows up in the admin's list as pending, with the offered role and team filled in. They see nothing until the admin approves them.
+- **Roles.** Admin, Mentor, and Student (stored as `member`). A student is on one team; a mentor can be on several and picks which one to view on the dashboard.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+| Data | Student | Mentor | Admin |
+| --- | --- | --- | --- |
+| Tasks | read all; add, edit, delete own team's | full | full |
+| Milestones | read | full | full |
+| Mentor tasks, wishlist | full | full | full |
+| Sponsors, expenses, settings | read | read | full |
+| People and teams | own profile only | own profile only | everyone in the organization |
 
-### `npm test`
+An account belongs to one organization at a time.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Run locally
 
-### `npm run build`
+```bash
+npm install
+npm start
+```
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+Opens at http://localhost:3000. If that port is taken, pick another: `PORT=3005 npm start`.
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+`npm start` runs in **demo mode**: any email and password signs you in as the admin of a demo organization, and everything is stored in the browser's local storage. It starts empty and never touches the live database.
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+## Connect Firebase
 
-### `npm run eject`
+The live project's config is in `.env.production.local`, which is not committed and is only used by `npm run build`. To create it, copy `.env.example` and fill in the values from Firebase Console > Project Settings > Your apps > Web app. The project needs the Email/Password and Google sign-in providers enabled and a Firestore database.
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+To run the dev server against a real Firebase project instead of demo mode, put the same values in `.env.development.local`.
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+## Security rules
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+`firestore.rules` is what enforces the separation between organizations and the role table above; the screens only mirror it. The rules have their own tests, which run against a local emulator and need Java:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```bash
+npm run test:rules
+```
 
-## Learn More
+## Test and build
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+```bash
+npm test
+npm run build
+```
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+## Deploy
 
-### Code Splitting
+The site is served from **hawksop.com** on Firebase Hosting (project `maupcoop`), which also provides sign-in and the database. The `.env.production.local` values are baked in at build time.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+1. **Rules.** Publish `firestore.rules` to the Firebase project, either by pasting it into Firebase Console > Firestore > Rules, or with `firebase deploy --only firestore:rules`.
+2. **Site.** Build and deploy:
 
-### Analyzing the Bundle Size
+   ```bash
+   npm run build
+   npx firebase-tools deploy --only hosting --project maupcoop
+   ```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+The rules and the site have to go out together: the site expects these rules, and the rules expect this site.
 
-### Making a Progressive Web App
+### Domain
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- DNS for hawksop.com is managed at GoDaddy: an `A` record for `@` pointing at Firebase Hosting, plus the `TXT` record Firebase asks for when the domain is connected (Firebase Console > Hosting > Add custom domain).
+- `hawksop.com` is listed under Firebase Console > Authentication > Settings > Authorized domains, and is the auth domain in `.env.production.local`. Google sign-in fails without both.
+- Firebase's built-in addresses (`maupcoop.web.app`, `maupcoop.firebaseapp.com`) stay on; `src/index.js` redirects them to hawksop.com.

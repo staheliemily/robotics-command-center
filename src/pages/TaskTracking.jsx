@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  Bot,
-  ArrowLeft,
+  ListTodo,
   Plus,
   AlertTriangle,
   Clock,
@@ -15,7 +13,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import ThemeToggle from '../components/dashboard/ThemeToggle';
+import { AppHeader, PageHeading } from '../components/layout/AppHeader';
 import TaskFilters from '../components/tasks/TaskFilters';
 import TaskCard from '../components/tasks/TaskCard';
 import AddTaskModal from '../components/tasks/AddTaskModal';
@@ -29,9 +27,10 @@ import { cn } from '../lib/utils';
 export function TaskTracking() {
   const { data: allTasks = [], isLoading } = useTasks();
   const taskStats = useTaskStats();
-  const { isAdmin } = useAuth();
+  const { canCreateTasks, canEditAnyTask, viewTeam } = useAuth();
 
-  const [filters, setFilters] = useState({});
+  // Start on the team chosen on the dashboard
+  const [filters, setFilters] = useState(viewTeam ? { team: viewTeam } : {});
   const [showAddModal, setShowAddModal] = useState(false);
   const [showMilestoneModal, setShowMilestoneModal] = useState(false);
   const [selectedTask, setSelectedTask] = useState(null);
@@ -75,22 +74,11 @@ export function TaskTracking() {
   if (viewMode === 'gantt') {
     return (
       <div className="flex h-screen flex-col bg-surface-950">
-        {/* Compact Header for Gantt View */}
-        <header className="flex-shrink-0 border-b border-surface-800 bg-surface-900">
+        <AppHeader />
+        {/* Compact toolbar for Gantt View */}
+        <div className="flex-shrink-0 border-b border-surface-800 bg-surface-900">
           <div className="flex h-12 items-center justify-between px-4">
-            <div className="flex items-center gap-3">
-              <Link to="/">
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-surface-400 hover:text-surface-200">
-                  <ArrowLeft className="h-4 w-4" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-2">
-                <div className="flex h-7 w-7 items-center justify-center rounded bg-primary-600">
-                  <Bot className="h-4 w-4 text-white" />
-                </div>
-                <h1 className="text-sm font-semibold text-surface-200">Task Tracking</h1>
-              </div>
-            </div>
+            <h1 className="text-sm font-semibold text-surface-200">Task Tracking</h1>
 
             <div className="flex items-center gap-2">
               {/* View Toggle */}
@@ -121,17 +109,19 @@ export function TaskTracking() {
                 </button>
               </div>
 
-              {isAdmin && (
+              {canCreateTasks && (
                 <>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowMilestoneModal(true)}
-                    className="h-8 gap-1 text-xs text-surface-400 hover:text-surface-200"
-                  >
-                    <Flag className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Milestone</span>
-                  </Button>
+                  {canEditAnyTask && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowMilestoneModal(true)}
+                      className="h-8 gap-1 text-xs text-surface-400 hover:text-surface-200"
+                    >
+                      <Flag className="h-3.5 w-3.5" />
+                      <span className="hidden sm:inline">Milestone</span>
+                    </Button>
+                  )}
                   <Button
                     size="sm"
                     onClick={() => setShowAddModal(true)}
@@ -144,7 +134,7 @@ export function TaskTracking() {
               )}
             </div>
           </div>
-        </header>
+        </div>
 
         {/* Full-screen Gantt Chart */}
         <div className="flex-1 overflow-hidden">
@@ -196,79 +186,58 @@ export function TaskTracking() {
   // List view (original layout)
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
-      {/* Header */}
-      <header className="sticky top-0 z-40 border-b border-surface-200 bg-white/80 backdrop-blur-sm dark:border-surface-800 dark:bg-surface-900/80">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-14 sm:h-16 items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-4">
-              <Link to="/">
-                <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-9 sm:w-9">
-                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </Link>
-              <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary-600">
-                  <Bot className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-                </div>
-                <div>
-                  <h1 className="text-sm sm:text-lg font-bold">Task Tracking</h1>
-                  <p className="hidden sm:block text-xs text-surface-500">Monitor & Manage</p>
-                </div>
-              </div>
-            </div>
-            <div className="flex items-center gap-1 sm:gap-2">
-              {/* View Toggle */}
-              <div className="flex rounded-lg border border-surface-200 dark:border-surface-700">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={cn(
-                    "flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm font-medium transition-colors rounded-l-lg",
-                    viewMode === 'list'
-                      ? "bg-primary-600 text-white"
-                      : "text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
-                  )}
-                >
-                  <List className="h-4 w-4" />
-                  <span className="hidden sm:inline">List</span>
-                </button>
-                <button
-                  onClick={() => setViewMode('gantt')}
-                  className={cn(
-                    "flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm font-medium transition-colors rounded-r-lg",
-                    viewMode === 'gantt'
-                      ? "bg-primary-600 text-white"
-                      : "text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
-                  )}
-                >
-                  <BarChart3 className="h-4 w-4" />
-                  <span className="hidden sm:inline">Gantt</span>
-                </button>
-              </div>
-
-              {isAdmin && (
-                <>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowMilestoneModal(true)}
-                    className="gap-1 sm:gap-2 text-sm px-2 sm:px-4"
-                  >
-                    <Flag className="h-4 w-4" />
-                    <span className="hidden lg:inline">Milestone</span>
-                  </Button>
-                  <Button onClick={() => setShowAddModal(true)} className="gap-1 sm:gap-2 text-sm px-2 sm:px-4">
-                    <Plus className="h-4 w-4" />
-                    <span className="hidden sm:inline">Add Task</span>
-                  </Button>
-                </>
-              )}
-              <ThemeToggle />
-            </div>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
       <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
+        <PageHeading icon={ListTodo} title="Task Tracking" subtitle="Monitor & Manage">
+          {/* View Toggle */}
+          <div className="flex rounded-lg border border-surface-200 dark:border-surface-700">
+            <button
+              onClick={() => setViewMode('list')}
+              className={cn(
+                "flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm font-medium transition-colors rounded-l-lg",
+                viewMode === 'list'
+                  ? "bg-primary-600 text-white"
+                  : "text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+              )}
+            >
+              <List className="h-4 w-4" />
+              <span className="hidden sm:inline">List</span>
+            </button>
+            <button
+              onClick={() => setViewMode('gantt')}
+              className={cn(
+                "flex items-center gap-1 px-2 sm:px-3 py-1.5 text-sm font-medium transition-colors rounded-r-lg",
+                viewMode === 'gantt'
+                  ? "bg-primary-600 text-white"
+                  : "text-surface-600 hover:bg-surface-100 dark:text-surface-400 dark:hover:bg-surface-800"
+              )}
+            >
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Gantt</span>
+            </button>
+          </div>
+
+          {canCreateTasks && (
+            <>
+              {canEditAnyTask && (
+                <Button
+                  variant="outline"
+                  onClick={() => setShowMilestoneModal(true)}
+                  className="gap-1 sm:gap-2 text-sm px-2 sm:px-4"
+                >
+                  <Flag className="h-4 w-4" />
+                  <span className="hidden lg:inline">Milestone</span>
+                </Button>
+              )}
+              <Button onClick={() => setShowAddModal(true)} className="gap-1 sm:gap-2 text-sm px-2 sm:px-4">
+                <Plus className="h-4 w-4" />
+                <span className="hidden sm:inline">Add Task</span>
+              </Button>
+            </>
+          )}
+        </PageHeading>
         {/* Status Summary */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Card>

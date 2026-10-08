@@ -90,6 +90,8 @@
 /* Smooth theme transitions */
 html {
   transition: background-color 0.3s ease, color 0.3s ease;
+  /* Keep room for the scrollbar so the top bar doesn't shift between short and long pages */
+  scrollbar-gutter: stable;
 }
 
 /* Focus ring styles */
@@ -217,10 +219,6 @@ html {
 .gantt-container {
   overflow: visible;
   width: 100%;
-}
-
-.gantt-container .gantt {
-  position: relative !important;
 }
 
 .gantt-container .gantt {

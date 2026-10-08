@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  ArrowLeft,
   Plus,
   Users,
   CheckCircle,
@@ -20,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
-import ThemeToggle from '../components/dashboard/ThemeToggle';
+import { AppHeader, PageHeading } from '../components/layout/AppHeader';
 import { useMentorTasks, useDeleteMentorTask } from '../hooks/useMentorTasks';
 import { useAuth } from '../context/AuthContext';
 import AddMentorTaskModal from '../components/mentor/AddMentorTaskModal';
@@ -81,7 +79,7 @@ const categoryConfig = {
 export function MentorTasks() {
   const { data: mentorTasks = [], isLoading } = useMentorTasks();
   const deleteTask = useDeleteMentorTask();
-  const { isAdmin } = useAuth();
+  const { canContribute } = useAuth();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingTask, setEditingTask] = useState(null);
@@ -202,7 +200,7 @@ export function MentorTasks() {
           )}
 
           {/* Actions */}
-          {isAdmin && (
+          {canContribute && (
             <div className="flex gap-2 border-t border-surface-200 pt-3 dark:border-surface-700">
               <Button
                 variant="ghost"
@@ -231,42 +229,18 @@ export function MentorTasks() {
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-50 dark:bg-surface-950">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="icon" className="text-surface-600 dark:text-surface-400">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-violet-500 to-purple-600">
-                <Users className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-surface-900 dark:text-surface-100">
-                  Mentor Tasks
-                </h1>
-                <p className="text-xs text-surface-500">Track mentor action items</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            {isAdmin && (
-              <Button onClick={() => setShowAddModal(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Task</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
-      <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <PageHeading icon={Users} iconClassName="bg-gradient-to-br from-violet-500 to-purple-600" title="Mentor Tasks" subtitle="Track mentor action items">
+          {canContribute && (
+            <Button onClick={() => setShowAddModal(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Task</span>
+            </Button>
+          )}
+        </PageHeading>
         {/* Stats Cards */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <Card>
@@ -405,7 +379,7 @@ export function MentorTasks() {
                     </div>
 
                     {/* Add button for admins */}
-                    {isAdmin && (
+                    {canContribute && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -458,7 +432,7 @@ export function MentorTasks() {
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <p className="mb-4 text-surface-500">No tasks in this category yet</p>
-                  {isAdmin && (
+                  {canContribute && (
                     <Button onClick={() => handleAddToCategory(selectedCategory)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add First Task

@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  ArrowLeft,
   Plus,
   Heart,
   ShoppingCart,
@@ -21,7 +19,7 @@ import {
 import { Card, CardContent } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import ThemeToggle from '../components/dashboard/ThemeToggle';
+import { AppHeader, PageHeading } from '../components/layout/AppHeader';
 import { useWishlist, useDeleteWishlistItem } from '../hooks/useWishlist';
 import { useAuth } from '../context/AuthContext';
 import AddWishlistModal from '../components/wishlist/AddWishlistModal';
@@ -82,7 +80,7 @@ const sectionConfig = {
 export function Wishlist() {
   const { data: wishlistItems = [], isLoading } = useWishlist();
   const deleteItem = useDeleteWishlistItem();
-  const { isAdmin } = useAuth();
+  const { canContribute } = useAuth();
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
@@ -210,7 +208,7 @@ export function Wishlist() {
           )}
 
           {/* Actions */}
-          {isAdmin && (
+          {canContribute && (
             <div className="flex gap-2 border-t border-surface-200 pt-3 dark:border-surface-700">
               <Button
                 variant="ghost"
@@ -239,42 +237,18 @@ export function Wishlist() {
 
   return (
     <div className="flex min-h-screen flex-col bg-surface-50 dark:bg-surface-950">
-      {/* Header */}
-      <header className="sticky top-0 z-30 border-b border-surface-200 bg-white dark:border-surface-800 dark:bg-surface-900">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6">
-          <div className="flex items-center gap-4">
-            <Link to="/">
-              <Button variant="ghost" size="icon" className="text-surface-600 dark:text-surface-400">
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-            </Link>
-            <div className="flex items-center gap-3">
-              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-pink-500 to-rose-600">
-                <Heart className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-surface-900 dark:text-surface-100">
-                  Wishlist
-                </h1>
-                <p className="text-xs text-surface-500">Track items you want to acquire</p>
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <ThemeToggle />
-            {isAdmin && (
-              <Button onClick={() => setShowAddModal(true)} className="gap-2">
-                <Plus className="h-4 w-4" />
-                <span className="hidden sm:inline">Add Item</span>
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
-      <main className="mx-auto w-full max-w-7xl flex-1 p-4 sm:p-6">
+      <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6 lg:px-8">
+        <PageHeading icon={Heart} iconClassName="bg-gradient-to-br from-pink-500 to-rose-600" title="Wishlist" subtitle="Track items you want to acquire">
+          {canContribute && (
+            <Button onClick={() => setShowAddModal(true)} className="gap-2">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Add Item</span>
+            </Button>
+          )}
+        </PageHeading>
         {/* Stats Cards */}
         <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <Card>
@@ -410,7 +384,7 @@ export function Wishlist() {
                     </div>
 
                     {/* Add button for admins */}
-                    {isAdmin && (
+                    {canContribute && (
                       <Button
                         variant="outline"
                         size="sm"
@@ -463,7 +437,7 @@ export function Wishlist() {
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-12">
                   <p className="mb-4 text-surface-500">No items in this section yet</p>
-                  {isAdmin && (
+                  {canContribute && (
                     <Button onClick={() => handleAddToSection(selectedSection)}>
                       <Plus className="mr-2 h-4 w-4" />
                       Add First Item
