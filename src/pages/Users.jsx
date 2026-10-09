@@ -7,7 +7,7 @@ import { AppHeader, PageHeading } from '../components/layout/AppHeader';
 import { useAuth } from '../context/AuthContext';
 import { useUsers, useUpdateUser } from '../hooks/useUsers';
 import { useTeams } from '../hooks/useTeams';
-import { CATEGORIES, ROLE_LABELS, buildInviteLink } from '../lib/teams';
+import { CATEGORIES, MONEY_AUDIENCES, ROLE_LABELS, buildInviteLink } from '../lib/teams';
 
 const selectClass =
   'w-full rounded-md border border-surface-300 bg-white px-2 py-1.5 text-sm text-surface-900 focus:outline-none focus:ring-1 focus:ring-primary-500 disabled:opacity-50 dark:border-surface-700 dark:bg-surface-800 dark:text-surface-100';
@@ -183,6 +183,21 @@ function OrganizationSettings() {
             Add
           </Button>
         </form>
+
+        <label className="block space-y-1 text-xs text-surface-500">
+          Who can see sponsors, expenses and the budget
+          <select
+            className={selectClass}
+            value={org.finance_visibility || 'admins'}
+            disabled={busy}
+            onChange={(e) => save({ finance_visibility: e.target.value })}
+          >
+            {Object.entries(MONEY_AUDIENCES).map(([value, label]) => (
+              <option key={value} value={value}>{label}</option>
+            ))}
+          </select>
+          <span className="block">Only admins can add or change them, whoever can see them.</span>
+        </label>
 
         {error && <p className="text-xs text-red-600 dark:text-red-400">{error}</p>}
       </CardContent>

@@ -7,11 +7,10 @@ import {
   onAuthStateChanged,
   sendEmailVerification,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useQueryClient } from '@tanstack/react-query';
-import { auth, db, googleProvider, isFirebaseConfigured } from '../config/firebase';
+import { auth, googleProvider, isFirebaseConfigured } from '../config/firebase';
 import firestoreClient, { setOrgScope } from '../api/firestoreClient';
-import { takeInvite } from '../lib/teams';
+import { canSeeMoney, peekInvite, saveInvite, takeInvite } from '../lib/teams';
 
 const AuthContext = createContext(undefined);
 
@@ -21,138 +20,231 @@ const DEMO_USER = {
   uid: 'demo-user',
   email: 'demo@example.com',
   displayName: 'Demo User',
-  org_id: DEMO_ORG_ID,
-  role: 'admin',
-  team: null,
-  teams: [],
-  status: 'active',
   emailVerified: true,
 };
 
 const VIEW_TEAM_KEY = 'view_team';
+const CURRENT_ORG_KEY = 'current_org';
 
 // Roles that may write anything at all; mirrors firestore.rules
 const CONTRIBUTOR_ROLES = ['admin', 'mentor', 'member'];
 
-const NO_MEMBERSHIP = { org_id: null, role: null, team: null, teams: [], status: 'pending' };
+// One account can belong to several organizations. Its place in each one
+// (role, teams, approval) is a record under that organization, so each
+// organization's admin controls only their own.
+const membersOf = (orgId) => `orgs/${orgId}/members`;
+
+async function fetchOrg(orgId) {
+  const data = await firestoreClient.getById('orgs', orgId);
+  if (!data) return null;
+  return {
+    id: orgId,
+    name: data.name || '',
+    teams: Array.isArray(data.teams) ? data.teams : [],
+    created_by: data.created_by || null,
+    finance_visibility: data.finance_visibility || 'admins',
+  };
+}
+
+// Load this account's membership in each organization it lists. One that has
+// gone away (organization deleted, or the person removed) is skipped.
+async function fetchMemberships(uid, orgIds) {
+  const loaded = await Promise.all(orgIds.map(async (orgId) => {
+    try {
+      const [org, member] = await Promise.all([
+        fetchOrg(orgId),
+        firestoreClient.getById(membersOf(orgId), uid),
+      ]);
+      if (!org || !member) return null;
+      return {
+        org,
+        role: member.role || null,
+        team: member.team || null,
+        // Mentors can be on several teams; students have the single `team` above
+        teams: Array.isArray(member.teams) ? member.teams : [],
+        status: member.status || 'pending',
+      };
+    } catch (err) {
+      console.error(`Error loading membership in ${orgId}:`, err);
+      return null;
+    }
+  }));
+  return loaded.filter(Boolean);
+}
+
+const identity = (base) => ({ uid: base.uid, email: base.email, displayName: base.displayName });
+
+async function rememberOrg(uid, orgId) {
+  const profile = await firestoreClient.getById('users', uid);
+  const orgs = Array.isArray(profile?.orgs) ? profile.orgs : [];
+  if (!orgs.includes(orgId)) await firestoreClient.setById('users', uid, { orgs: [...orgs, orgId] });
+}
+
+// Ask to join an organization. It grants nothing until one of its admins approves.
+async function createJoinRequest(base, invite) {
+  await firestoreClient.setById(membersOf(invite.org), base.uid, {
+    ...identity(base),
+    status: 'pending',
+    role: null,
+    team: null,
+    teams: [],
+    requested_role: invite.role || null,
+    requested_teams: invite.teams || [],
+    created_at: new Date().toISOString(),
+  });
+  await rememberOrg(base.uid, invite.org);
+}
+
+// Accounts used to hold a single organization on the account itself. Move
+// that over: whoever created the organization is its admin again straight
+// away; anyone else comes back as a request for the admin to approve once.
+async function migrateLegacyMembership(base, profile) {
+  const orgId = profile.org_id;
+  if (!orgId) return;
+  try {
+    const org = await fetchOrg(orgId);
+    if (org && !(await firestoreClient.getById(membersOf(orgId), base.uid))) {
+      if (org.created_by === base.uid) {
+        // The rules need a verified email for this; try again next sign-in
+        if (!base.emailVerified) return;
+        await firestoreClient.setById(membersOf(orgId), base.uid, {
+          ...identity(base), status: 'active', role: 'admin', team: null, teams: [],
+        });
+      } else {
+        const hadTeams = profile.role === 'member' ? [profile.team].filter(Boolean) : profile.teams;
+        await createJoinRequest(base, {
+          org: orgId,
+          role: profile.role || profile.requested_role || null,
+          teams: (Array.isArray(hadTeams) && hadTeams.length ? hadTeams : profile.requested_teams) || [],
+        });
+      }
+    }
+    const orgs = Array.isArray(profile.orgs) ? profile.orgs : [];
+    await firestoreClient.setById('users', base.uid, {
+      orgs: org && !orgs.includes(orgId) ? [...orgs, orgId] : orgs,
+      org_id: null,
+    });
+  } catch (err) {
+    console.error('Error moving membership over:', err);
+  }
+}
+
+// The link in the verification email should open on our own address rather
+// than Firebase's built-in one. If Firebase refuses the custom address, send
+// the plain email so nobody is left unable to verify.
+async function sendVerification(firebaseUser) {
+  const { hostname, origin } = window.location;
+  const isLocal = hostname === 'localhost' || hostname === '127.0.0.1';
+  if (isLocal) return sendEmailVerification(firebaseUser);
+  try {
+    await sendEmailVerification(firebaseUser, { url: `${origin}/`, linkDomain: hostname });
+  } catch (err) {
+    if (err?.code === 'auth/too-many-requests') throw err;
+    await sendEmailVerification(firebaseUser);
+  }
+}
 
 export function AuthProvider({ children }) {
   const queryClient = useQueryClient();
-  const [user, setUser] = useState(null);
-  // The organization the signed-in user belongs to: { id, name, teams: [{ name, category }] }
-  const [org, setOrg] = useState(null);
+  // The signed-in account: { uid, email, displayName, emailVerified }
+  const [account, setAccount] = useState(null);
+  // Its place in each organization: [{ org: { id, name, teams }, role, team, teams, status }]
+  const [memberships, setMemberships] = useState([]);
+  // Which of those organizations is on screen
+  const [currentOrgId, setCurrentOrgId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isDemo, setIsDemo] = useState(false);
   // Which team the dashboard is showing; null means all teams
   const [viewTeam, setViewTeamState] = useState(null);
+  // An invite link the signed-in person opened and has not answered yet
+  const [invite, setInvite] = useState(peekInvite);
 
-  // Fetch the member record (organization, role, team, approval status)
-  const fetchMemberRecord = async (uid) => {
-    try {
-      const userDoc = await getDoc(doc(db, 'users', uid));
-      if (!userDoc.exists()) return NO_MEMBERSHIP;
-
-      const data = userDoc.data();
-      return {
-        org_id: data.org_id || null,
-        role: data.role || null,
-        team: data.team || null,
-        // Mentors can be on several teams; students have the single `team` above
-        teams: Array.isArray(data.teams) ? data.teams : [],
-        status: data.status || 'pending',
-      };
-    } catch (err) {
-      console.error('Error fetching member record:', err);
-      return NO_MEMBERSHIP;
-    }
+  const clearSession = () => {
+    setOrgScope(null);
+    queryClient.clear();
+    setMemberships([]);
+    setCurrentOrgId(null);
+    setAccount(null);
   };
 
-  const fetchOrg = async (orgId) => {
-    if (!orgId) return null;
-    try {
-      const data = await firestoreClient.getById('orgs', orgId);
-      if (!data) return null;
-      return { id: orgId, name: data.name || '', teams: Array.isArray(data.teams) ? data.teams : [] };
-    } catch (err) {
-      console.error('Error fetching organization:', err);
-      return null;
-    }
-  };
-
-  // Create the user document on first sign-in. The security rules only allow
-  // a new user to create themselves as pending, with no role and no team.
-  const ensureUserDocument = async (firebaseUser) => {
-    try {
-      const userDocRef = doc(db, 'users', firebaseUser.uid);
-      const userDoc = await getDoc(userDocRef);
-
-      if (!userDoc.exists()) {
-        // If they arrived through an invite link, ask to join that organization.
-        // It grants nothing until one of its admins approves.
-        const invite = takeInvite();
-        await setDoc(userDocRef, {
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
-          status: 'pending',
-          role: null,
-          team: null,
-          org_id: invite ? invite.org : null,
-          ...(invite ? { requested_role: invite.role, requested_teams: invite.teams } : {}),
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        });
-      }
-    } catch (err) {
-      console.error('Error creating user document:', err);
-    }
-  };
-
-  // Put a loaded member and their organization into state
-  const applyMembership = async (base, record) => {
-    const loadedOrg = await fetchOrg(record.org_id);
-    const active = record.status === 'active' && base.emailVerified && !!loadedOrg;
+  // Put an account, its memberships and the organization to show into state
+  const applySession = (base, list, preferOrgId) => {
+    const stored = localStorage.getItem(`${CURRENT_ORG_KEY}_${base.uid}`);
+    const current =
+      list.find(m => m.org.id === preferOrgId) ||
+      list.find(m => m.org.id === stored) ||
+      list.find(m => m.status === 'active') ||
+      list[0] ||
+      null;
+    const active = !!current && current.status === 'active' && base.emailVerified;
 
     // Data is only reachable once they are an approved member of the organization
-    setOrgScope(active ? loadedOrg.id : null);
+    setOrgScope(active ? current.org.id : null);
     queryClient.clear();
-    setOrg(loadedOrg);
-    setUser({ ...base, ...record });
+    setAccount(base);
+    setMemberships(list);
+    setCurrentOrgId(current ? current.org.id : null);
+    if (current) localStorage.setItem(`${CURRENT_ORG_KEY}_${base.uid}`, current.org.id);
 
     // Start on the last team they were viewing, or their own team if they have just one
-    const orgTeams = (loadedOrg?.teams || []).map(t => t.name);
-    const own = record.role === 'member' ? [record.team].filter(Boolean) : record.teams;
-    const stored = localStorage.getItem(`${VIEW_TEAM_KEY}_${base.uid}`);
-    if (orgTeams.includes(stored)) setViewTeamState(stored);
-    else if (stored !== 'all' && own.length === 1 && orgTeams.includes(own[0])) setViewTeamState(own[0]);
+    const orgTeams = (current?.org.teams || []).map(t => t.name);
+    const own = current ? (current.role === 'member' ? [current.team].filter(Boolean) : current.teams) : [];
+    const storedTeam = current ? localStorage.getItem(`${VIEW_TEAM_KEY}_${base.uid}_${current.org.id}`) : null;
+    if (orgTeams.includes(storedTeam)) setViewTeamState(storedTeam);
+    else if (storedTeam !== 'all' && own.length === 1 && orgTeams.includes(own[0])) setViewTeamState(own[0]);
     else setViewTeamState(null);
   };
 
-  const loadUser = async (firebaseUser) => {
-    await ensureUserDocument(firebaseUser);
-    const record = await fetchMemberRecord(firebaseUser.uid);
-    await applyMembership({
-      uid: firebaseUser.uid,
-      email: firebaseUser.email,
-      displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
-      emailVerified: firebaseUser.emailVerified,
-    }, record);
+  // Load everything about an account. A first sign-in creates its profile
+  // and, if it came through an invite link, asks to join that organization.
+  const loadSession = async (base, preferOrgId) => {
+    let orgIds = [];
+    try {
+      let profile = await firestoreClient.getById('users', base.uid);
+      if (!profile) {
+        profile = { email: base.email, displayName: base.displayName, orgs: [] };
+        await firestoreClient.setById('users', base.uid, { ...profile, created_at: new Date().toISOString() });
+        const firstInvite = takeInvite();
+        if (firstInvite) {
+          setInvite(null);
+          await createJoinRequest(base, firstInvite);
+        }
+      } else {
+        await migrateLegacyMembership(base, profile);
+      }
+      const latest = await firestoreClient.getById('users', base.uid);
+      orgIds = Array.isArray(latest?.orgs) ? latest.orgs : [];
+    } catch (err) {
+      console.error('Error loading account:', err);
+    }
+    applySession(base, await fetchMemberships(base.uid, orgIds), preferOrgId);
   };
 
-  // Demo mode keeps one organization in the browser, starting with no teams
-  const loadDemoUser = async (overrides = {}) => {
-    const existing = await firestoreClient.getById('orgs', DEMO_ORG_ID);
-    if (!existing) {
-      const orgs = JSON.parse(localStorage.getItem('robotics_team_orgs') || '[]');
-      orgs.push({ id: DEMO_ORG_ID, name: 'Demo organization', teams: [], created_by: DEMO_USER.uid });
-      localStorage.setItem('robotics_team_orgs', JSON.stringify(orgs));
+  const baseOf = (firebaseUser) => ({
+    uid: firebaseUser.uid,
+    email: firebaseUser.email,
+    displayName: firebaseUser.displayName || firebaseUser.email?.split('@')[0],
+    emailVerified: firebaseUser.emailVerified,
+  });
+
+  const loadUser = (firebaseUser, preferOrgId) => loadSession(baseOf(firebaseUser), preferOrgId);
+
+  // Demo mode keeps everything in the browser. It starts with one empty
+  // organization and behaves like a real account from there.
+  const loadDemoUser = async (overrides = {}, preferOrgId) => {
+    const base = { ...DEMO_USER, ...JSON.parse(localStorage.getItem('demo_identity') || '{}'), ...overrides };
+    localStorage.setItem('demo_identity', JSON.stringify({ email: base.email, displayName: base.displayName }));
+    if (!(await firestoreClient.getById('users', base.uid))) {
+      if (!(await firestoreClient.getById('orgs', DEMO_ORG_ID))) {
+        await firestoreClient.setById('orgs', DEMO_ORG_ID, { name: 'Demo organization', teams: [], created_by: base.uid });
+      }
+      await firestoreClient.setById(membersOf(DEMO_ORG_ID), base.uid, {
+        ...identity(base), status: 'active', role: 'admin', team: null, teams: [],
+      });
+      await firestoreClient.setById('users', base.uid, { email: base.email, displayName: base.displayName, orgs: [DEMO_ORG_ID] });
     }
-    const { uid, email, displayName, emailVerified, ...record } = {
-      ...DEMO_USER,
-      role: localStorage.getItem('user_role') || 'admin',
-      ...overrides,
-    };
-    await applyMembership({ uid, email, displayName, emailVerified }, record);
+    await loadSession(base, preferOrgId);
   };
 
   useEffect(() => {
@@ -172,10 +264,7 @@ export function AuthProvider({ children }) {
       if (firebaseUser) {
         await loadUser(firebaseUser);
       } else {
-        setOrgScope(null);
-        queryClient.clear();
-        setOrg(null);
-        setUser(null);
+        clearSession();
       }
       setLoading(false);
     });
@@ -219,7 +308,7 @@ export function AuthProvider({ children }) {
     try {
       const result = await createUserWithEmailAndPassword(auth, email, password);
       // User document will be created by ensureUserDocument in onAuthStateChanged
-      await sendEmailVerification(result.user);
+      await sendVerification(result.user);
     } catch (err) {
       setError(err.message);
       throw err;
@@ -250,10 +339,7 @@ export function AuthProvider({ children }) {
     if (isDemo) {
       localStorage.removeItem('demo_session');
       localStorage.removeItem('user_role');
-      setOrgScope(null);
-      queryClient.clear();
-      setOrg(null);
-      setUser(null);
+      clearSession();
       return;
     }
 
@@ -265,28 +351,31 @@ export function AuthProvider({ children }) {
     }
   };
 
-  // Set user role (for demo mode toggle)
+  // Demo mode can preview the read-only view; the choice is kept in the browser
   const setRole = (role) => {
-    if (isDemo) {
-      localStorage.setItem('user_role', role);
-      setUser(prev => prev ? { ...prev, role } : null);
-    }
+    if (isDemo) localStorage.setItem('user_role', role);
   };
 
   // Re-send the verification email to the signed-in user
   const resendVerification = async () => {
     if (isDemo || !auth.currentUser) return;
-    await sendEmailVerification(auth.currentUser);
+    await sendVerification(auth.currentUser);
   };
 
   // Re-check verification and approval, e.g. after clicking the email link.
   // The ID token is refreshed too, since the rules read email_verified from it.
-  const refreshUser = async () => {
-    if (isDemo) return loadDemoUser();
+  const refreshUser = async (preferOrgId) => {
+    if (isDemo) return loadDemoUser({}, preferOrgId);
     if (!auth.currentUser) return;
     await auth.currentUser.reload();
     await auth.currentUser.getIdToken(true);
-    await loadUser(auth.currentUser);
+    await loadUser(auth.currentUser, preferOrgId);
+  };
+
+  // Show a different one of this account's organizations
+  const switchOrganization = (orgId) => {
+    if (!account || orgId === currentOrgId) return;
+    applySession(account, memberships, orgId);
   };
 
   // Start a new organization. Whoever creates it becomes its first admin;
@@ -295,68 +384,88 @@ export function AuthProvider({ children }) {
     const created = await firestoreClient.create('orgs', {
       name: name.trim(),
       teams: [],
-      created_by: user.uid,
+      created_by: account.uid,
     });
-    await firestoreClient.update('users', user.uid, {
-      org_id: created.id,
-      role: 'admin',
-      status: 'active',
-      team: null,
-      teams: [],
+    await firestoreClient.setById(membersOf(created.id), account.uid, {
+      ...identity(account), status: 'active', role: 'admin', team: null, teams: [],
     });
-    await refreshUser();
+    await rememberOrg(account.uid, created.id);
+    await refreshUser(created.id);
   };
 
-  // Ask to join the organization an invite link points at. Used when someone
-  // who already has an account opens a link; they stay pending until approved.
-  const requestToJoin = async (invite) => {
-    await firestoreClient.update('users', user.uid, {
-      org_id: invite.org,
-      status: 'pending',
-      role: null,
-      team: null,
-      requested_role: invite.role,
-      requested_teams: invite.teams,
-    });
-    await refreshUser();
+  // Remember an invite link the signed-in person opened, to ask them about it
+  const offerInvite = (next) => {
+    saveInvite(next);
+    setInvite(next);
+  };
+
+  const dismissInvite = () => {
+    takeInvite();
+    setInvite(null);
+  };
+
+  // Ask to join the organization an invite link points at. The account keeps
+  // the organizations it already has, and stays pending in this one until approved.
+  const requestToJoin = async (accepted) => {
+    if (!memberships.some(m => m.org.id === accepted.org)) {
+      await createJoinRequest(account, accepted);
+    }
+    dismissInvite();
+    await refreshUser(accepted.org);
   };
 
   // Withdraw a join request, e.g. after opening the wrong invite link
   const cancelJoinRequest = async () => {
-    await firestoreClient.update('users', user.uid, {
-      org_id: null,
-      status: 'pending',
-      role: null,
-      team: null,
+    await firestoreClient.remove(membersOf(currentOrgId), account.uid);
+    const profile = await firestoreClient.getById('users', account.uid);
+    await firestoreClient.setById('users', account.uid, {
+      orgs: (profile?.orgs || []).filter(id => id !== currentOrgId),
     });
+    localStorage.removeItem(`${CURRENT_ORG_KEY}_${account.uid}`);
     await refreshUser();
   };
 
   // Change the organization's name or team list (admins only)
   const updateOrganization = async (data) => {
-    await firestoreClient.update('orgs', org.id, data);
-    setOrg(prev => ({ ...prev, ...data }));
+    await firestoreClient.update('orgs', currentOrgId, data);
+    setMemberships(prev => prev.map(m => (m.org.id === currentOrgId ? { ...m, org: { ...m.org, ...data } } : m)));
     queryClient.invalidateQueries();
   };
 
   const setViewTeam = (teamName) => {
     setViewTeamState(teamName);
-    if (user?.uid) {
-      localStorage.setItem(`${VIEW_TEAM_KEY}_${user.uid}`, teamName || 'all');
+    if (account?.uid && currentOrgId) {
+      localStorage.setItem(`${VIEW_TEAM_KEY}_${account.uid}_${currentOrgId}`, teamName || 'all');
     }
   };
 
-  const role = user?.role || null;
-  const team = user?.team || null;
-  const isActive = !!user && !!org && user.status === 'active' && user.emailVerified;
+  const membership = memberships.find(m => m.org.id === currentOrgId) || null;
+  const org = membership?.org || null;
+  const demoViewer = isDemo && localStorage.getItem('user_role') === 'viewer';
+  const role = demoViewer ? 'viewer' : (membership?.role || null);
+  const team = membership?.team || null;
+  const status = membership?.status || 'pending';
+  // The account together with its place in the organization on screen
+  const user = account && {
+    ...account,
+    org_id: currentOrgId,
+    role,
+    team,
+    teams: membership?.teams || [],
+    status,
+  };
+  const isActive = !!account && !!org && status === 'active' && account.emailVerified;
   const canEditAnyTask = isActive && (role === 'admin' || role === 'mentor');
   const isMember = isActive && role === 'member';
   // Teams this person belongs to: one for a student, any number for a mentor
-  const myTeams = role === 'member' ? [team].filter(Boolean) : (user?.teams || []);
+  const myTeams = role === 'member' ? [team].filter(Boolean) : (membership?.teams || []);
 
   const value = {
     user,
     org,
+    // Every organization this account is in or has asked to join
+    organizations: memberships.map(m => ({ id: m.org.id, name: m.org.name, role: m.role, status: m.status })),
+    switchOrganization,
     loading,
     error,
     isDemo,
@@ -367,8 +476,13 @@ export function AuthProvider({ children }) {
     setViewTeam,
     isActive,
     // Signed in and verified, but not attached to any organization yet
-    needsOrganization: !!user && user.emailVerified && !user.org_id,
+    needsOrganization: !!account && account.emailVerified && memberships.length === 0,
+    invite,
+    offerInvite,
+    dismissInvite,
     isAdmin: isActive && role === 'admin',
+    // Sponsors, expenses and the budget: admins, plus whoever the organization chose
+    canSeeMoney: isActive && canSeeMoney(org, role),
     // Admins and mentors manage every team's tasks and the milestones
     canEditAnyTask,
     // Students can also add tasks, but only for their own team
@@ -388,7 +502,7 @@ export function AuthProvider({ children }) {
     signUpWithEmail,
     signInWithGoogle,
     logout,
-    isAuthenticated: !!user,
+    isAuthenticated: !!account,
   };
 
   return (

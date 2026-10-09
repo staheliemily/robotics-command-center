@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Bot, Clock, MailCheck, LogOut, RefreshCw } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Bot, Building2, Clock, MailCheck, LogOut, Plus, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { useAuth } from '../context/AuthContext';
@@ -7,11 +8,18 @@ import { useAuth } from '../context/AuthContext';
 // Shown to signed-in users who cannot see team data yet: either their email
 // is unverified or an admin has not approved the account.
 export function AccessPending() {
-  const { user, org, logout, resendVerification, refreshUser, cancelJoinRequest } = useAuth();
+  const navigate = useNavigate();
+  const {
+    user, org, organizations, switchOrganization,
+    logout, resendVerification, refreshUser, cancelJoinRequest,
+  } = useAuth();
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState('');
 
   const needsVerification = !user?.emailVerified;
+  // A suspended member's record is the admin's to change, not theirs to withdraw
+  const canWithdraw = !needsVerification && !user?.role;
+  const others = organizations.filter(o => o.id !== org?.id);
 
   const run = async (action, successMessage) => {
     setBusy(true);
@@ -78,7 +86,7 @@ export function AccessPending() {
             </Button>
           )}
 
-          {!needsVerification && (
+          {canWithdraw && (
             <Button
               variant="outline"
               className="w-full"
@@ -87,6 +95,36 @@ export function AccessPending() {
             >
               Cancel this request
             </Button>
+          )}
+
+          {!needsVerification && (
+            <div className="space-y-2 border-t border-surface-200 pt-4 dark:border-surface-700">
+              {others.length > 0 && (
+                <p className="text-xs text-surface-500">Your other organizations</p>
+              )}
+              {others.map((o) => (
+                <Button
+                  key={o.id}
+                  variant="outline"
+                  className="w-full justify-start gap-2"
+                  disabled={busy}
+                  onClick={() => switchOrganization(o.id)}
+                >
+                  <Building2 className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{o.name}</span>
+                  {o.status !== 'active' && <span className="ml-auto text-xs text-surface-500">waiting</span>}
+                </Button>
+              ))}
+              <Button
+                variant="ghost"
+                className="w-full justify-start gap-2"
+                disabled={busy}
+                onClick={() => navigate('/organizations/new')}
+              >
+                <Plus className="h-4 w-4" />
+                Start or join another organization
+              </Button>
+            </div>
           )}
 
           <Button variant="ghost" className="w-full gap-2" disabled={busy} onClick={logout}>

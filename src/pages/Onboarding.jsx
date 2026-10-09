@@ -1,25 +1,44 @@
-import React, { useState } from 'react';
-import { Bot, Building2, UserPlus, LogOut } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Bot, Building2, UserPlus, LogOut } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input, Label } from '../components/ui/input';
 import { useAuth } from '../context/AuthContext';
-import { ROLE_LABELS, peekInvite, takeInvite } from '../lib/teams';
+import firestoreClient from '../api/firestoreClient';
+import { ROLE_LABELS } from '../lib/teams';
 
-// Shown to a signed-in user who does not belong to an organization yet.
-// They either start one (and become its admin) or join one by invite.
+// Where someone starts an organization (and becomes its admin) or answers an
+// invite to join one. Shown to people who are in no organization yet, and to
+// anyone adding another organization to the account they already have.
 export function Onboarding() {
-  const { user, logout, createOrganization, requestToJoin } = useAuth();
+  const navigate = useNavigate();
+  const { user, org, organizations, logout, createOrganization, requestToJoin, invite, dismissInvite } = useAuth();
   const [name, setName] = useState('');
-  const [invite, setInvite] = useState(peekInvite);
+  const [inviteOrgName, setInviteOrgName] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const hasOrganizations = organizations.length > 0;
+
+  // Say which organization the invite is for
+  useEffect(() => {
+    let cancelled = false;
+    setInviteOrgName('');
+    if (invite) {
+      firestoreClient.getById('orgs', invite.org)
+        .then((found) => { if (!cancelled) setInviteOrgName(found?.name || ''); })
+        .catch(() => {});
+    }
+    return () => { cancelled = true; };
+  }, [invite]);
 
   const run = async (action) => {
     setBusy(true);
     setError('');
     try {
       await action();
+      navigate('/');
     } catch (err) {
       setError(err.message);
       setBusy(false);
@@ -32,10 +51,7 @@ export function Onboarding() {
     run(() => createOrganization(name));
   };
 
-  const handleJoin = () => run(async () => {
-    await requestToJoin(invite);
-    takeInvite();
-  });
+  const handleJoin = () => run(() => requestToJoin(invite));
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-primary-50 via-white to-accent-50 dark:from-surface-950 dark:via-surface-900 dark:to-surface-950 p-4">
@@ -44,7 +60,7 @@ export function Onboarding() {
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-primary-100 dark:bg-primary-900">
             <Bot className="h-8 w-8 text-primary-600 dark:text-primary-400" />
           </div>
-          <CardTitle className="text-2xl">Welcome</CardTitle>
+          <CardTitle className="text-2xl">{hasOrganizations ? 'Add an organization' : 'Welcome'}</CardTitle>
           <CardDescription>Signed in as {user?.email}</CardDescription>
         </CardHeader>
 
@@ -60,7 +76,8 @@ export function Onboarding() {
               <div className="flex items-start gap-2 text-sm text-primary-800 dark:text-primary-200">
                 <UserPlus className="h-5 w-5 flex-shrink-0" />
                 <p>
-                  You opened an invite to join as a {ROLE_LABELS[invite.role].toLowerCase()}
+                  You opened an invite to join {inviteOrgName ? <strong>{inviteOrgName}</strong> : 'an organization'} as
+                  a {ROLE_LABELS[invite.role].toLowerCase()}
                   {invite.teams.length > 0 && ` on ${invite.teams.join(', ')}`}.
                 </p>
               </div>
@@ -70,7 +87,7 @@ export function Onboarding() {
               <button
                 type="button"
                 className="w-full text-center text-xs text-surface-500 hover:underline"
-                onClick={() => { takeInvite(); setInvite(null); }}
+                onClick={dismissInvite}
               >
                 Ignore this invite
               </button>
@@ -105,7 +122,15 @@ export function Onboarding() {
           {!invite && (
             <p className="text-center text-sm text-surface-500">
               Joining a group that already exists? Ask its admin for an invite link and open it.
+              {hasOrganizations && ' You keep the organizations you already have.'}
             </p>
+          )}
+
+          {hasOrganizations && !invite && (
+            <Button variant="outline" className="w-full gap-2" disabled={busy} onClick={() => navigate('/')}>
+              <ArrowLeft className="h-4 w-4" />
+              Back{org?.name ? ` to ${org.name}` : ''}
+            </Button>
           )}
 
           <Button variant="ghost" className="w-full gap-2" disabled={busy} onClick={logout}>

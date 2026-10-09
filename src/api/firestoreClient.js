@@ -9,6 +9,7 @@ import {
   getDocs,
   getDoc,
   addDoc,
+  setDoc,
   updateDoc,
   deleteDoc,
   query as fsQuery,
@@ -34,7 +35,8 @@ export function setOrgScope(orgId) {
 }
 
 function scoped(collectionName) {
-  if (GLOBAL_COLLECTIONS.includes(collectionName)) return collectionName;
+  // A full path (e.g. orgs/{orgId}/members) names its organization itself
+  if (GLOBAL_COLLECTIONS.includes(collectionName) || collectionName.includes('/')) return collectionName;
   if (!currentOrgId) throw new Error('No organization selected');
   return `orgs/${currentOrgId}/${collectionName}`;
 }
@@ -77,6 +79,20 @@ function localUpdate(collectionName, id, data) {
   };
   localStorage.setItem(`${STORAGE_PREFIX}${collectionName}`, JSON.stringify(items));
   return items[index];
+}
+
+// Create or merge into the item with this exact id
+function localSet(collectionName, id, data) {
+  const items = localGetAll(collectionName);
+  const index = items.findIndex(item => item.id === id);
+  const now = new Date().toISOString();
+  const item = index === -1
+    ? { ...data, id, created_at: now, updated_at: now }
+    : { ...items[index], ...data, updated_at: now };
+  if (index === -1) items.push(item);
+  else items[index] = item;
+  localStorage.setItem(`${STORAGE_PREFIX}${collectionName}`, JSON.stringify(items));
+  return item;
 }
 
 function localRemove(collectionName, id) {
@@ -199,6 +215,19 @@ async function firestoreUpdate(collectionName, id, data) {
     };
   } catch (error) {
     console.error(`Error updating ${collectionName}/${id}:`, error);
+    throw error;
+  }
+}
+
+/**
+ * Create or merge into the Firestore document with this exact id
+ */
+async function firestoreSet(collectionName, id, data) {
+  try {
+    await setDoc(doc(db, collectionName, id), { ...data, updated_at: serverTimestamp() }, { merge: true });
+    return { id, ...data };
+  } catch (error) {
+    console.error(`Error setting ${collectionName}/${id}:`, error);
     throw error;
   }
 }
@@ -340,6 +369,17 @@ export async function update(collectionName, id, data) {
 }
 
 /**
+ * Create an item under a chosen id, or merge into it if it exists
+ */
+export async function setById(collectionName, id, data) {
+  collectionName = scoped(collectionName);
+  if (shouldUseFirestore()) {
+    return firestoreSet(collectionName, id, data);
+  }
+  return localSet(collectionName, id, data);
+}
+
+/**
  * Delete an item
  */
 export async function remove(collectionName, id) {
@@ -389,6 +429,7 @@ const firestoreClient = {
   getAll,
   getById,
   create,
+  setById,
   update,
   remove,
   query: queryItems,

@@ -28,15 +28,106 @@ import { AppHeader, PageHeading } from '../components/layout/AppHeader';
 import { useTaskStats, useTasks } from '../hooks/useTasks';
 import { useExpenseStats } from '../hooks/useExpenses';
 import { useSponsorStats } from '../hooks/useSponsors';
+import { useAuth } from '../context/AuthContext';
 import { formatCurrency, cn } from '../lib/utils';
 
 const COLORS = ['#3b82f6', '#f97316', '#22c55e', '#eab308', '#a855f7', '#ef4444'];
 
+// Sponsors and expenses are only loaded for people allowed to see them:
+// both pieces below are left off the page for everyone else.
+function useFinanceSummary() {
+  const expenseStats = useExpenseStats();
+  const sponsorStats = useSponsorStats();
+  return {
+    totalIncome: sponsorStats.receivedAmount,
+    totalExpenses: expenseStats.totalAmount,
+    netBalance: sponsorStats.receivedAmount - expenseStats.totalAmount,
+    pendingSponsors: sponsorStats.pendingAmount,
+  };
+}
+
+function FinancialSummary() {
+  const financeSummary = useFinanceSummary();
+
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="text-lg">Financial Summary</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="rounded-lg bg-surface-100 p-4 dark:bg-surface-800">
+            <p className="text-sm text-surface-500">Total Income</p>
+            <p className="text-xl font-bold text-green-600">
+              {formatCurrency(financeSummary.totalIncome)}
+            </p>
+          </div>
+          <div className="rounded-lg bg-surface-100 p-4 dark:bg-surface-800">
+            <p className="text-sm text-surface-500">Total Expenses</p>
+            <p className="text-xl font-bold text-orange-600">
+              {formatCurrency(financeSummary.totalExpenses)}
+            </p>
+          </div>
+          <div className="rounded-lg bg-surface-100 p-4 dark:bg-surface-800">
+            <p className="text-sm text-surface-500">Net Balance</p>
+            <p className={cn(
+              "text-xl font-bold",
+              financeSummary.netBalance >= 0 ? "text-blue-600" : "text-red-600"
+            )}>
+              {formatCurrency(financeSummary.netBalance)}
+            </p>
+          </div>
+          <div className="rounded-lg bg-surface-100 p-4 dark:bg-surface-800">
+            <p className="text-sm text-surface-500">Pending Sponsors</p>
+            <p className="text-xl font-bold text-yellow-600">
+              {formatCurrency(financeSummary.pendingSponsors)}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function NetBalanceCard() {
+  const financeSummary = useFinanceSummary();
+
+  return (
+    <Card>
+      <CardContent className="p-4">
+        <div className="flex items-center gap-3">
+          <div className={cn(
+            "rounded-lg p-2",
+            financeSummary.netBalance >= 0
+              ? "bg-green-100 dark:bg-green-900"
+              : "bg-red-100 dark:bg-red-900"
+          )}>
+            <TrendingUp className={cn(
+              "h-5 w-5",
+              financeSummary.netBalance >= 0
+                ? "text-green-600 dark:text-green-400"
+                : "text-red-600 dark:text-red-400"
+            )} />
+          </div>
+          <div>
+            <p className="text-sm text-surface-500">Net Balance</p>
+            <p className={cn(
+              "text-2xl font-bold",
+              financeSummary.netBalance >= 0 ? "text-green-600" : "text-red-600"
+            )}>
+              {formatCurrency(financeSummary.netBalance)}
+            </p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 export function Reports() {
   const taskStats = useTaskStats();
   const { data: tasks = [] } = useTasks();
-  const expenseStats = useExpenseStats();
-  const sponsorStats = useSponsorStats();
+  const { canSeeMoney } = useAuth();
 
   // Prepare task status data
   const taskStatusData = [
@@ -66,14 +157,6 @@ export function Reports() {
     { name: 'FTC', value: taskStats.byCategory['FTC'] || 0 },
     { name: 'FRC', value: taskStats.byCategory['FRC'] || 0 },
   ].filter(d => d.value > 0);
-
-  // Finance summary
-  const financeSummary = {
-    totalIncome: sponsorStats.receivedAmount,
-    totalExpenses: expenseStats.totalAmount,
-    netBalance: sponsorStats.receivedAmount - expenseStats.totalAmount,
-    pendingSponsors: sponsorStats.pendingAmount,
-  };
 
   return (
     <div className="min-h-screen bg-surface-50 dark:bg-surface-950">
@@ -130,34 +213,7 @@ export function Reports() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={cn(
-                  "rounded-lg p-2",
-                  financeSummary.netBalance >= 0
-                    ? "bg-green-100 dark:bg-green-900"
-                    : "bg-red-100 dark:bg-red-900"
-                )}>
-                  <TrendingUp className={cn(
-                    "h-5 w-5",
-                    financeSummary.netBalance >= 0
-                      ? "text-green-600 dark:text-green-400"
-                      : "text-red-600 dark:text-red-400"
-                  )} />
-                </div>
-                <div>
-                  <p className="text-sm text-surface-500">Net Balance</p>
-                  <p className={cn(
-                    "text-2xl font-bold",
-                    financeSummary.netBalance >= 0 ? "text-green-600" : "text-red-600"
-                  )}>
-                    {formatCurrency(financeSummary.netBalance)}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+          {canSeeMoney && <NetBalanceCard />}
         </div>
 
         {/* Charts Grid */}
@@ -277,42 +333,7 @@ export function Reports() {
         </div>
 
         {/* Financial Summary */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg">Financial Summary</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-lg bg-surface-100 p-4 dark:bg-surface-800">
-                <p className="text-sm text-surface-500">Total Income</p>
-                <p className="text-xl font-bold text-green-600">
-                  {formatCurrency(financeSummary.totalIncome)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-surface-100 p-4 dark:bg-surface-800">
-                <p className="text-sm text-surface-500">Total Expenses</p>
-                <p className="text-xl font-bold text-orange-600">
-                  {formatCurrency(financeSummary.totalExpenses)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-surface-100 p-4 dark:bg-surface-800">
-                <p className="text-sm text-surface-500">Net Balance</p>
-                <p className={cn(
-                  "text-xl font-bold",
-                  financeSummary.netBalance >= 0 ? "text-blue-600" : "text-red-600"
-                )}>
-                  {formatCurrency(financeSummary.netBalance)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-surface-100 p-4 dark:bg-surface-800">
-                <p className="text-sm text-surface-500">Pending Sponsors</p>
-                <p className="text-xl font-bold text-yellow-600">
-                  {formatCurrency(financeSummary.pendingSponsors)}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        {canSeeMoney && <FinancialSummary />}
       </main>
     </div>
   );

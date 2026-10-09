@@ -398,40 +398,40 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
 
   if (taskHierarchy.length === 0) {
     return (
-      <div className="flex h-full items-center justify-center bg-surface-900 text-surface-400">
+      <div className="flex h-full items-center justify-center bg-white dark:bg-surface-900 text-surface-600 dark:text-surface-400">
         <p>No tasks or milestones to display. Create a milestone and add tasks with dates.</p>
       </div>
     );
   }
 
   return (
-    <div className="flex h-full flex-col bg-surface-950">
+    <div className="flex h-full flex-col bg-surface-50 dark:bg-surface-950">
       {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-surface-800 bg-surface-900 px-4 py-2">
+      <div className="flex items-center justify-between border-b border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900 px-4 py-2">
         <div className="flex items-center gap-2">
           <button
             onClick={scrollToStart}
-            className="rounded bg-surface-800 px-3 py-1.5 text-sm text-surface-300 hover:bg-surface-700"
+            className="rounded bg-surface-100 dark:bg-surface-800 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700"
           >
             First Task
           </button>
           <button
             onClick={scrollToToday}
-            className="rounded bg-surface-800 px-3 py-1.5 text-sm text-surface-300 hover:bg-surface-700"
+            className="rounded bg-surface-100 dark:bg-surface-800 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700"
           >
             Today
           </button>
           <select
             value={viewMode}
             onChange={(e) => setViewMode(e.target.value)}
-            className="rounded bg-surface-800 px-3 py-1.5 text-sm text-surface-300 hover:bg-surface-700 border-none focus:outline-none focus:ring-1 focus:ring-primary-500"
+            className="rounded bg-surface-100 dark:bg-surface-800 px-3 py-1.5 text-sm text-surface-700 dark:text-surface-300 hover:bg-surface-200 dark:hover:bg-surface-700 border-none focus:outline-none focus:ring-1 focus:ring-primary-500"
           >
             {VIEW_MODES.map((mode) => (
               <option key={mode.id} value={mode.id}>{mode.label}</option>
             ))}
           </select>
         </div>
-        <div className="text-sm text-surface-400">
+        <div className="text-sm text-surface-600 dark:text-surface-400">
           Drag bars to reschedule • Drag edges to adjust progress
         </div>
       </div>
@@ -439,10 +439,10 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Task List */}
-        <div className="w-64 flex-shrink-0 border-r border-surface-800 bg-surface-900">
+        <div className="w-64 flex-shrink-0 border-r border-surface-200 dark:border-surface-800 bg-white dark:bg-surface-900">
           {/* Header */}
-          <div className="flex h-[52px] items-center border-b border-surface-800 px-3">
-            <span className="text-sm font-medium text-surface-300">Name</span>
+          <div className="flex h-[52px] items-center border-b border-surface-200 dark:border-surface-800 px-3">
+            <span className="text-sm font-medium text-surface-700 dark:text-surface-300">Name</span>
           </div>
 
           {/* Task List */}
@@ -456,14 +456,14 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
                   {/* Group Header */}
                   <div
                     className={cn(
-                      "flex items-center gap-2 px-3 cursor-pointer hover:bg-surface-800",
-                      isMilestone ? "text-surface-200" : "text-surface-400"
+                      "flex items-center gap-2 px-3 cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800",
+                      isMilestone ? "text-surface-900 dark:text-surface-200" : "text-surface-600 dark:text-surface-400"
                     )}
                     style={{ height: ROW_HEIGHT }}
                     onClick={() => isMilestone && toggleMilestone(group.data.id)}
                   >
                     {isMilestone && (
-                      <button className="text-surface-500 hover:text-surface-300">
+                      <button className="text-surface-500 hover:text-surface-700 dark:hover:text-surface-300">
                         {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                       </button>
                     )}
@@ -478,11 +478,11 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
                   {(isExpanded || group.type === 'unassigned') && group.tasks.map((task) => (
                     <div
                       key={task.id}
-                      className="flex items-center gap-2 pl-9 pr-3 cursor-pointer hover:bg-surface-800 text-surface-400 hover:text-surface-200"
+                      className="flex items-center gap-2 pl-9 pr-3 cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-600 dark:text-surface-400 hover:text-surface-900 dark:hover:text-surface-200"
                       style={{ height: ROW_HEIGHT }}
                       onClick={() => onTaskClick?.(task)}
                     >
-                      <div className="h-1.5 w-1.5 rounded-full bg-surface-600" />
+                      <div className="h-1.5 w-1.5 rounded-full bg-surface-400 dark:bg-surface-600" />
                       <span className="truncate text-sm">{task.title}</span>
                     </div>
                   ))}
@@ -490,7 +490,7 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
                   {/* Add Task Button */}
                   {isMilestone && isExpanded && (
                     <div
-                      className="flex items-center gap-2 pl-9 pr-3 cursor-pointer hover:bg-surface-800 text-surface-500 hover:text-surface-300"
+                      className="flex items-center gap-2 pl-9 pr-3 cursor-pointer hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 hover:text-surface-700 dark:hover:text-surface-300"
                       style={{ height: ROW_HEIGHT }}
                       onClick={() => onAddTask?.(group.data)}
                     >
@@ -507,7 +507,7 @@ export function GanttChart({ tasks = [], categoryFilter, onTaskClick, onMileston
         {/* Right Panel - Timeline */}
         <div
           ref={wrapperRef}
-          className="flex-1 overflow-x-auto bg-surface-950"
+          className="flex-1 overflow-x-auto bg-surface-50 dark:bg-surface-950"
         >
           <div ref={containerRef} />
         </div>

@@ -32,7 +32,7 @@ export function GanttRow({
         onClick={onClick}
         style={{ width: totalColumns * columnWidth }}
       >
-        <div className="absolute inset-0 flex items-center justify-center text-xs text-surface-400">
+        <div className="absolute inset-0 flex items-center justify-center text-xs text-surface-600 dark:text-surface-400">
           No dates set
         </div>
       </div>

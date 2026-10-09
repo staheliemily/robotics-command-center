@@ -20,10 +20,10 @@ const priorityColors = {
 };
 
 const statusConfig = {
-  'To Do': { icon: Clock, color: 'text-surface-400', bg: 'bg-surface-700' },
-  'In Progress': { icon: AlertCircle, color: 'text-blue-400', bg: 'bg-blue-500/20' },
-  'Waiting': { icon: Clock, color: 'text-orange-400', bg: 'bg-orange-500/20' },
-  'Done': { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-500/20' },
+  'To Do': { icon: Clock, color: 'text-surface-500 dark:text-surface-400', bg: 'bg-surface-100 dark:bg-surface-700' },
+  'In Progress': { icon: AlertCircle, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-500/20' },
+  'Waiting': { icon: Clock, color: 'text-orange-600 dark:text-orange-400', bg: 'bg-orange-500/20' },
+  'Done': { icon: CheckCircle, color: 'text-green-600 dark:text-green-400', bg: 'bg-green-500/20' },
 };
 
 export function MentorTasksSection() {
@@ -59,7 +59,7 @@ export function MentorTasksSection() {
 
   if (isLoading) {
     return (
-      <div className="rounded-lg border border-surface-700 bg-surface-800/50 p-8">
+      <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/50 p-8">
         <div className="flex items-center justify-center">
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-primary-500 border-t-transparent" />
         </div>
@@ -68,15 +68,15 @@ export function MentorTasksSection() {
   }
 
   return (
-    <div className="rounded-lg border border-surface-700 bg-surface-800/50">
+    <div className="rounded-lg border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800/50">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-surface-700">
+      <div className="flex items-center justify-between p-4 border-b border-surface-200 dark:border-surface-700">
         <div className="flex items-center gap-2">
-          <Users className="h-5 w-5 text-surface-400" />
-          <h3 className="font-semibold text-white">Mentor Tasks</h3>
+          <Users className="h-5 w-5 text-surface-500 dark:text-surface-400" />
+          <h3 className="font-semibold text-surface-900 dark:text-white">Mentor Tasks</h3>
         </div>
         <Link to="/mentor-tasks">
-          <Button variant="ghost" size="sm" className="text-surface-400 hover:text-white">
+          <Button variant="ghost" size="sm" className="text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white">
             View All
             <ArrowRight className="ml-1 h-4 w-4" />
           </Button>
@@ -84,24 +84,24 @@ export function MentorTasksSection() {
       </div>
 
       {/* Stats Row */}
-      <div className="grid grid-cols-4 gap-2 p-4 border-b border-surface-700">
+      <div className="grid grid-cols-4 gap-2 p-4 border-b border-surface-200 dark:border-surface-700">
         <div className="text-center">
-          <p className="text-2xl font-bold text-white">{todoCount}</p>
-          <p className="text-xs text-surface-400">To Do</p>
+          <p className="text-2xl font-bold text-surface-900 dark:text-white">{todoCount}</p>
+          <p className="text-xs text-surface-500 dark:text-surface-400">To Do</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-blue-400">{inProgressCount}</p>
-          <p className="text-xs text-surface-400">In Progress</p>
+          <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{inProgressCount}</p>
+          <p className="text-xs text-surface-500 dark:text-surface-400">In Progress</p>
         </div>
         <div className="text-center">
-          <p className="text-2xl font-bold text-orange-400">{waitingCount}</p>
-          <p className="text-xs text-surface-400">Waiting</p>
+          <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{waitingCount}</p>
+          <p className="text-xs text-surface-500 dark:text-surface-400">Waiting</p>
         </div>
         <div className="text-center">
-          <p className={cn("text-2xl font-bold", urgentCount > 0 ? "text-red-400" : "text-surface-400")}>
+          <p className={cn("text-2xl font-bold", urgentCount > 0 ? "text-red-600 dark:text-red-400" : "text-surface-500 dark:text-surface-400")}>
             {urgentCount}
           </p>
-          <p className="text-xs text-surface-400">Urgent</p>
+          <p className="text-xs text-surface-500 dark:text-surface-400">Urgent</p>
         </div>
       </div>
 
@@ -109,8 +109,8 @@ export function MentorTasksSection() {
       <div className="p-4">
         {displayTasks.length === 0 ? (
           <div className="text-center py-8">
-            <Users className="mx-auto h-10 w-10 text-surface-600 mb-2" />
-            <p className="text-surface-400">No active mentor tasks</p>
+            <Users className="mx-auto h-10 w-10 text-surface-300 dark:text-surface-600 mb-2" />
+            <p className="text-surface-500 dark:text-surface-400">No active mentor tasks</p>
             <Link to="/mentor-tasks">
               <Button variant="outline" size="sm" className="mt-3">
                 Add Task
@@ -121,15 +121,15 @@ export function MentorTasksSection() {
           <div className="space-y-3">
             {displayTasks.map((task) => {
               const StatusIcon = statusConfig[task.status]?.icon || Clock;
-              const statusColor = statusConfig[task.status]?.color || 'text-surface-400';
-              const statusBg = statusConfig[task.status]?.bg || 'bg-surface-700';
+              const statusColor = statusConfig[task.status]?.color || 'text-surface-500 dark:text-surface-400';
+              const statusBg = statusConfig[task.status]?.bg || 'bg-surface-100 dark:bg-surface-700';
               const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== 'Done';
 
               return (
                 <Link
                   key={task.id}
                   to="/mentor-tasks"
-                  className="block rounded-lg border border-surface-700 bg-surface-800 p-3 transition-colors hover:border-surface-600 hover:bg-surface-700"
+                  className="block rounded-lg border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-800 p-3 transition-colors hover:border-surface-300 dark:hover:border-surface-600 hover:bg-surface-50 dark:hover:bg-surface-700"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
@@ -137,7 +137,7 @@ export function MentorTasksSection() {
                         {task.priority === 'Urgent' && (
                           <span className="flex h-2 w-2 rounded-full bg-red-500 animate-pulse" />
                         )}
-                        <h4 className="font-medium text-white truncate">{task.title}</h4>
+                        <h4 className="font-medium text-surface-900 dark:text-white truncate">{task.title}</h4>
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -149,14 +149,14 @@ export function MentorTasksSection() {
                         {task.priority && (
                           <span className="flex items-center gap-1">
                             <span className={cn('h-2 w-2 rounded-full', priorityColors[task.priority])} />
-                            <span className="text-surface-400">{task.priority}</span>
+                            <span className="text-surface-500 dark:text-surface-400">{task.priority}</span>
                           </span>
                         )}
 
                         {task.due_date && (
                           <span className={cn(
                             'flex items-center gap-1',
-                            isOverdue ? 'text-red-400' : 'text-surface-400'
+                            isOverdue ? 'text-red-600 dark:text-red-400' : 'text-surface-500 dark:text-surface-400'
                           )}>
                             <Calendar className="h-3 w-3" />
                             {new Date(task.due_date).toLocaleDateString()}
@@ -177,7 +177,7 @@ export function MentorTasksSection() {
 
             {activeTasks.length > 6 && (
               <Link to="/mentor-tasks" className="block text-center">
-                <Button variant="ghost" size="sm" className="text-surface-400 hover:text-white">
+                <Button variant="ghost" size="sm" className="text-surface-500 dark:text-surface-400 hover:text-surface-900 dark:hover:text-white">
                   +{activeTasks.length - 6} more tasks
                 </Button>
               </Link>
