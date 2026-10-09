@@ -108,6 +108,49 @@ test('an admin sees their people and the invite link on the People page', async 
   expect(await screen.findByText('(you)')).toBeInTheDocument();
 });
 
+// Signed in as a mentor of Home Club rather than its admin
+const asMentor = (finance_visibility) => {
+  signedIn();
+  seed('orgs', stored('orgs').map(o => (o.id === 'home' ? { ...o, finance_visibility } : o)));
+  seed('orgs/home/members', [{ id: 'demo-user', email: 'demo@example.com', status: 'active', role: 'mentor', team: null, teams: [] }]);
+};
+
+test('an admin sees the money on the home page', async () => {
+  signedIn();
+  open('/');
+  expect(await screen.findByText('Business & Finance')).toBeInTheDocument();
+});
+
+test('a mentor does not see the money unless the organization opens it to mentors', async () => {
+  asMentor(undefined);
+  const first = open('/');
+  expect(await screen.findByText('Mentor Tasks', { selector: 'h2' })).toBeInTheDocument();
+  expect(screen.queryByText('Business & Finance')).not.toBeInTheDocument();
+  expect(screen.queryByText('Sponsors')).not.toBeInTheDocument();
+  first.unmount();
+
+  asMentor('mentors');
+  open('/');
+  expect(await screen.findByText('Business & Finance')).toBeInTheDocument();
+});
+
+test('the Reports page leaves out the financial summary for people who cannot see money', async () => {
+  asMentor(undefined);
+  open('/reports');
+  expect(await screen.findByText('Needs Mentor')).toBeInTheDocument();
+  expect(screen.queryByText('Financial Summary')).not.toBeInTheDocument();
+  expect(screen.queryByText('Net Balance')).not.toBeInTheDocument();
+});
+
+test('an admin chooses who sees the money on the People page', async () => {
+  signedIn();
+  open('/users');
+  const choice = await screen.findByLabelText(/Who can see sponsors, expenses and the budget/);
+  expect(choice).toHaveValue('admins');
+  await userEvent.selectOptions(choice, 'mentors');
+  expect(stored('orgs').find(o => o.id === 'home').finance_visibility).toBe('mentors');
+});
+
 test('starting another organization from inside the app switches to it', async () => {
   signedIn();
   open('/organizations/new');

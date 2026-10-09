@@ -69,3 +69,17 @@ export function takeInvite() {
   }
   return invite;
 }
+
+// Who, besides admins, sees sponsors, expenses and the budget. The security
+// rules read the same field, so hiding it here is not the only protection.
+export const MONEY_AUDIENCES = {
+  admins: 'Admins only',
+  mentors: 'Admins and mentors',
+  everyone: 'Everyone in the organization',
+};
+
+export function canSeeMoney(org, role) {
+  if (role === 'admin') return true;
+  const audience = org?.finance_visibility || 'admins';
+  return audience === 'everyone' || (audience === 'mentors' && role === 'mentor');
+}

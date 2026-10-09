@@ -294,6 +294,33 @@ describe('what each role may do', () => {
     expect(auth.current.canEditAnyTask).toBe(true);
   });
 
+  test('only admins see the money until the organization opens it up', async () => {
+    const mentor = await asRole({ role: 'mentor', teams: ['Talons'] });
+    expect(mentor.current.canSeeMoney).toBe(false);
+
+    const openTo = async (finance_visibility) => {
+      seed('orgs', stored('orgs').map(o => (o.id === 'eagle' ? { ...o, finance_visibility } : o)));
+      await act(() => mentor.current.refreshUser('eagle'));
+    };
+    await openTo('mentors');
+    expect(mentor.current.canSeeMoney).toBe(true);
+
+    // A student still does not, until it is opened to everyone
+    adminSets('eagle', { role: 'member', team: 'Talons', teams: [] });
+    await act(() => mentor.current.refreshUser('eagle'));
+    expect(mentor.current.canSeeMoney).toBe(false);
+    await openTo('everyone');
+    expect(mentor.current.canSeeMoney).toBe(true);
+  });
+
+  test('an admin always sees the money and chooses who else does', async () => {
+    const auth = await asRole({ role: 'admin' });
+    expect(auth.current.canSeeMoney).toBe(true);
+    await act(() => auth.current.updateOrganization({ finance_visibility: 'mentors' }));
+    expect(auth.current.org.finance_visibility).toBe('mentors');
+    expect(stored('orgs').find(o => o.id === 'eagle').finance_visibility).toBe('mentors');
+  });
+
   test('a suspended member loses access but keeps their place in the list', async () => {
     const auth = await asRole({ role: 'mentor', teams: ['Talons'] });
     adminSets('eagle', { status: 'pending' });

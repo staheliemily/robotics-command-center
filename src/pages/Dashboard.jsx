@@ -185,7 +185,7 @@ function GettingStarted({ hasTeams }) {
 }
 
 export function Dashboard() {
-  const { isAdmin, org, myTeams, viewTeam, setViewTeam } = useAuth();
+  const { isAdmin, canSeeMoney, org, myTeams, viewTeam, setViewTeam } = useAuth();
 
   const { teams, teamNames, teamsIn } = useTeams();
 
@@ -254,7 +254,8 @@ export function Dashboard() {
             />
           )}
 
-          {/* Business Section */}
+          {/* Business Section - only for those the organization lets see money */}
+          {canSeeMoney && (
           <div className="mb-10">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2 rounded-lg bg-green-600">
@@ -293,6 +294,7 @@ export function Dashboard() {
               </div>
             </div>
           </div>
+          )}
 
           {/* Mentor Tasks Section */}
           <div className="mb-10">

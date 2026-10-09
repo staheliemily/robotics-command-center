@@ -9,7 +9,7 @@ import {
 } from '@firebase/rules-unit-testing';
 import {
   doc, getDoc, setDoc, updateDoc, deleteDoc, addDoc,
-  collection, getDocs,
+  collection, getDocs, query, where,
 } from 'firebase/firestore';
 
 let env;
@@ -58,6 +58,9 @@ beforeEach(async () => {
     await setDoc(doc(db, 'orgs/B/tasks/b1'), { title: 'B task', team: 'Red' });
     await setDoc(doc(db, 'orgs/B/tasks/b2'), { title: 'B blue task', team: 'Blue' });
     await setDoc(doc(db, 'orgs/A/sponsors/s1'), { name: 'Sponsor', amount: 100 });
+    await setDoc(doc(db, 'orgs/A/expenses/e0'), { description: 'Motors', amount: 40 });
+    await setDoc(doc(db, 'orgs/A/settings/budget'), { key: 'total_budget', value: 5000 });
+    await setDoc(doc(db, 'orgs/A/settings/banner'), { key: 'banner_message', value: 'Hello' });
     await setDoc(doc(db, 'orgs/B/sponsors/s1'), { name: 'B Sponsor', amount: 100 });
     await setDoc(doc(db, 'orgs/A/milestones/m1'), { name: 'Kickoff' });
     await setDoc(doc(db, 'orgs/A/wishlist/w1'), { name: 'Drill' });
@@ -92,11 +95,14 @@ test('mentors and students cannot reach another org either', async () => {
 });
 
 test('members can read their own org\'s data', async () => {
+  // Money (sponsors, expenses, the budget in settings) has its own tests below
+  const everyday = ['tasks', 'milestones', 'mentor_tasks', 'wishlist'];
   for (const uid of ['adminA', 'mentorA', 'studentA']) {
-    for (const c of DATA) {
+    for (const c of everyday) {
       await assertSucceeds(getDocs(collection(as(uid), `orgs/A/${c}`)));
     }
   }
+  for (const c of DATA) await assertSucceeds(getDocs(collection(as('adminA'), `orgs/A/${c}`)));
 });
 
 test('the old top-level collections are closed to everyone', async () => {
@@ -313,6 +319,59 @@ test('an admin who is made a mentor again loses the admin job, even the founder'
   // They are still a mentor, and the organization still has an admin
   await assertSucceeds(getDocs(collection(founder, 'orgs/A/tasks')));
   await assertSucceeds(getDocs(collection(as('mentorA'), 'orgs/A/members')));
+});
+
+// ---------- Who sees the money ----------
+
+const budget = (db, orgId = 'A') => getDocs(query(collection(db, `orgs/${orgId}/settings`), where('key', '==', 'total_budget')));
+const banner = (db, orgId = 'A') => getDocs(query(collection(db, `orgs/${orgId}/settings`), where('key', '==', 'banner_message')));
+const seesMoney = async (uid) => {
+  await assertSucceeds(getDocs(collection(as(uid), 'orgs/A/sponsors')));
+  await assertSucceeds(getDocs(collection(as(uid), 'orgs/A/expenses')));
+  await assertSucceeds(budget(as(uid)));
+};
+const seesNoMoney = async (uid) => {
+  await assertFails(getDocs(collection(as(uid), 'orgs/A/sponsors')));
+  await assertFails(getDoc(doc(as(uid), 'orgs/A/sponsors/s1')));
+  await assertFails(getDocs(collection(as(uid), 'orgs/A/expenses')));
+  await assertFails(budget(as(uid)));
+};
+
+test('unless an organization says otherwise, only its admins see sponsors, expenses and the budget', async () => {
+  await seesMoney('adminA');
+  await seesNoMoney('mentorA');
+  await seesNoMoney('studentA');
+  // The announcement is not money and stays open to every member
+  await assertSucceeds(banner(as('mentorA')));
+  await assertSucceeds(banner(as('studentA')));
+});
+
+test('an admin can open the money to mentors, or to everyone, and close it again', async () => {
+  const org = doc(as('adminA'), 'orgs/A');
+  await assertSucceeds(updateDoc(org, { finance_visibility: 'mentors' }));
+  await seesMoney('mentorA');
+  await seesNoMoney('studentA');
+
+  await assertSucceeds(updateDoc(org, { finance_visibility: 'everyone' }));
+  await seesMoney('mentorA');
+  await seesMoney('studentA');
+
+  await assertSucceeds(updateDoc(org, { finance_visibility: 'admins' }));
+  await seesNoMoney('mentorA');
+  await seesNoMoney('studentA');
+});
+
+test('seeing the money never means changing it, and never reaches another organization', async () => {
+  await updateDoc(doc(as('adminA'), 'orgs/A'), { finance_visibility: 'everyone' });
+  for (const uid of ['mentorA', 'studentA']) {
+    await assertFails(setDoc(doc(as(uid), 'orgs/A/sponsors/s9'), { name: 'x', amount: 1 }));
+    await assertFails(updateDoc(doc(as(uid), 'orgs/A/sponsors/s1'), { amount: 0 }));
+    await assertFails(addDoc(collection(as(uid), 'orgs/A/settings'), { key: 'total_budget', value: 1 }));
+    // Nor can they change who sees it
+    await assertFails(updateDoc(doc(as(uid), 'orgs/A'), { finance_visibility: 'admins' }));
+  }
+  // People waiting or suspended in A, and members of B, still see none of it
+  for (const uid of ['pendingA', 'suspendedA', 'adminB']) await seesNoMoney(uid);
 });
 
 test('admins list only their own org\'s people; others cannot list at all', async () => {

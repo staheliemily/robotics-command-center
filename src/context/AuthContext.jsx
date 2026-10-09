@@ -10,7 +10,7 @@ import {
 import { useQueryClient } from '@tanstack/react-query';
 import { auth, googleProvider, isFirebaseConfigured } from '../config/firebase';
 import firestoreClient, { setOrgScope } from '../api/firestoreClient';
-import { peekInvite, saveInvite, takeInvite } from '../lib/teams';
+import { canSeeMoney, peekInvite, saveInvite, takeInvite } from '../lib/teams';
 
 const AuthContext = createContext(undefined);
 
@@ -42,6 +42,7 @@ async function fetchOrg(orgId) {
     name: data.name || '',
     teams: Array.isArray(data.teams) ? data.teams : [],
     created_by: data.created_by || null,
+    finance_visibility: data.finance_visibility || 'admins',
   };
 }
 
@@ -480,6 +481,8 @@ export function AuthProvider({ children }) {
     offerInvite,
     dismissInvite,
     isAdmin: isActive && role === 'admin',
+    // Sponsors, expenses and the budget: admins, plus whoever the organization chose
+    canSeeMoney: isActive && canSeeMoney(org, role),
     // Admins and mentors manage every team's tasks and the milestones
     canEditAnyTask,
     // Students can also add tasks, but only for their own team

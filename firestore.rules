@@ -27,6 +27,20 @@ service cloud.firestore {
       return inOrg(orgId) && role(orgId) == 'admin';
     }
 
+    // Sponsors, expenses and the budget. Admins always see them; each
+    // organization chooses whether its mentors or everyone else does too.
+    // An organization that has never chosen keeps money to its admins.
+    function moneyAudience(orgId) {
+      return get(/databases/$(database)/documents/orgs/$(orgId)).data.get('finance_visibility', 'admins');
+    }
+    function canSeeMoney(orgId) {
+      return isOrgAdmin(orgId)
+        || (inOrg(orgId) && (
+          moneyAudience(orgId) == 'everyone'
+          || (moneyAudience(orgId) == 'mentors' && role(orgId) == 'mentor')
+        ));
+    }
+
     // An account's own profile: its name and the list of organizations it
     // looks in. It grants nothing; access comes only from members records.
     match /users/{uid} {
@@ -117,15 +131,18 @@ service cloud.firestore {
       }
 
       match /expenses/{id} {
-        allow read: if inOrg(orgId);
+        allow read: if canSeeMoney(orgId);
         allow write: if isOrgAdmin(orgId);
       }
       match /sponsors/{id} {
-        allow read: if inOrg(orgId);
+        allow read: if canSeeMoney(orgId);
         allow write: if isOrgAdmin(orgId);
       }
+      // The announcement lives here and is for everyone; the budget figure
+      // lives here too and follows the money rule.
       match /settings/{id} {
-        allow read: if inOrg(orgId);
+        allow read: if inOrg(orgId)
+          && (resource.data.key != 'total_budget' || canSeeMoney(orgId));
         allow write: if isOrgAdmin(orgId);
       }
 
